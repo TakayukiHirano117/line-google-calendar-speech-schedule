@@ -1,0 +1,22 @@
+{
+  "name": "line-calendar-schedule-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node esbuild.js",
+    "push": "clasp push",
+    "deploy": "npm run build && npm run push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.8",
+    "esbuild": "^0.27.2",
+    "esbuild-gas-plugin": "^0.10.0",
+    "typescript": "^5.9.3"
+  }
+}
