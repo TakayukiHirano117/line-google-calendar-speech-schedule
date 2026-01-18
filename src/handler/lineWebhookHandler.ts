@@ -1,11 +1,10 @@
-import { sendLineTextReply } from '../infra/line/lineMessagingApi';
-import { MESSAGE } from '../constants/message';
 import { CONFIG } from '../config/index';
 import { createEventFromVoice } from '../usecase/createEventFromVoice';
 
 import { showHelp } from '../usecase/showHelp';
 import { showWeekSchedule } from '../usecase/showWeekSchedule';
 import { showTodaySchedule } from '../usecase/showTodaySchedule';
+import { InvalidRequestUsecase } from '../usecase/InvalidRequestUsecase';
 /**
  * LINEイベントを処理
  * @param {Object} lineEvent - LINEイベント
@@ -18,7 +17,7 @@ export const processLineEvent = (lineEvent) => {
   } else if (isTextMessage(lineEvent)) {
     processTextMessage(replyToken, lineEvent.message.text);
   } else {
-    sendLineTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+    InvalidRequestUsecase(replyToken);
   }
 };
 
@@ -37,7 +36,7 @@ const processTextMessage = (replyToken, messageText) => {
   } else if (isTodayCommand(normalizedText)) {
     showTodaySchedule(replyToken);
   } else {
-    sendLineTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+    InvalidRequestUsecase(replyToken);
   }
 };
 

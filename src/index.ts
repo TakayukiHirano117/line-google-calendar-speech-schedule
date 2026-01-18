@@ -4,7 +4,7 @@ import { processLineEvent } from './handler/lineWebhookHandler';
  * @param {Object} e - イベントオブジェクト
  * @returns {Object} JSONレスポンス
  */
-export function doPost(e) {
+export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
   const requestBody = JSON.parse(e.postData.contents);
 
   if (!hasValidEvents(requestBody)) {
@@ -22,7 +22,7 @@ export function doPost(e) {
  * @param {Object} e - イベントオブジェクト
  * @returns {Object} テキストレスポンス
  */
-export function doGet(e) {
+export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput {
   // 各サービスへのアクセス権限を確認
   CalendarApp.getDefaultCalendar();
   PropertiesService.getScriptProperties();
@@ -45,11 +45,11 @@ const hasValidEvents = (requestBody) => {
 
 /**
  * JSONレスポンスを作成
- * @param {Object} data - レスポンスデータ
+ * @param {Object} reposnse - レスポンスデータ
  * @returns {Object}
  */
-const createJsonResponse = (data) => {
+const createJsonResponse = (response) => {
   return ContentService
-    .createTextOutput(JSON.stringify(data))
+    .createTextOutput(JSON.stringify(response))
     .setMimeType(ContentService.MimeType.JSON);
 };
