@@ -14,4 +14,4 @@ LINEID: @175ublzc
 
 QRコード
 
-![LINE QRコード](https://qr-official.line.me/gs/M_175ublzc_GW.png?oat_content=qr)
+![LINE QRコード](./src/assets/images/qr/M_gainfriends_2dbarcodes_GW.png)
