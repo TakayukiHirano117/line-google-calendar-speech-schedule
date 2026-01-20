@@ -5,36 +5,65 @@ import { showHelp } from '../usecase/showHelp';
 import { showWeekSchedule } from '../usecase/showWeekSchedule';
 import { showTodaySchedule } from '../usecase/showTodaySchedule';
 import { InvalidRequestUsecase } from '../usecase/InvalidRequestUsecase';
+import { hasValidToken } from '../infra/google/oauth2Service';
+import { sendAuthRequiredMessage } from '../usecase/authUsecase';
+
 /**
  * LINEイベントを処理
  * @param {Object} lineEvent - LINEイベント
  */
-export const processLineEvent = (lineEvent) => {
+export const processLineEvent = (lineEvent: LineWebhookEvent) => {
   const replyToken = lineEvent.replyToken;
+  const userId = extractUserId(lineEvent);
 
+  // userIdが取得できない場合はエラー
+  if (!userId) {
+    logError('processLineEvent', 'userIdを取得できませんでした');
+    InvalidRequestUsecase(replyToken);
+    return;
+  }
+
+  // 認証状態をチェック
+  if (!hasValidToken(userId)) {
+    // 未認証の場合は認証URLを送信
+    sendAuthRequiredMessage(replyToken, userId);
+    return;
+  }
+
+  // 認証済みの場合は通常処理
   if (isAudioMessage(lineEvent)) {
-    createEventFromVoice(replyToken, lineEvent.message.id);
+    createEventFromVoice(replyToken, lineEvent.message.id, userId);
   } else if (isTextMessage(lineEvent)) {
-    processTextMessage(replyToken, lineEvent.message.text);
+    processTextMessage(replyToken, lineEvent.message.text, userId);
   } else {
     InvalidRequestUsecase(replyToken);
   }
 };
 
 /**
- * テキストメッセージを処理
- * @param {string} replyToken - リプライトークン
- * @param {string} messageText - メッセージテキスト
+ * LINEイベントからuserIdを抽出
+ * @param lineEvent LINEイベント
+ * @returns userId または undefined
  */
-const processTextMessage = (replyToken, messageText) => {
+const extractUserId = (lineEvent: LineWebhookEvent): string | undefined => {
+  return lineEvent.source?.userId;
+};
+
+/**
+ * テキストメッセージを処理
+ * @param replyToken リプライトークン
+ * @param messageText メッセージテキスト
+ * @param userId LINEユーザーID
+ */
+const processTextMessage = (replyToken: string, messageText: string, userId: string) => {
   const normalizedText = messageText.trim();
 
   if (isHelpCommand(normalizedText)) {
     showHelp(replyToken);
   } else if (isWeekCommand(normalizedText)) {
-    showWeekSchedule(replyToken);
+    showWeekSchedule(replyToken, userId);
   } else if (isTodayCommand(normalizedText)) {
-    showTodaySchedule(replyToken);
+    showTodaySchedule(replyToken, userId);
   } else {
     InvalidRequestUsecase(replyToken);
   }

@@ -1,13 +1,15 @@
-import { getWeekEvents } from '../infra/google/calendarApi';
+import { getUserWeekEvents } from '../infra/google/userCalendarApi';
 import { buildWeekEventsFlexMessage } from '../infra/line/flexMessageFactory';
 import { sendLineFlexReply } from '../infra/line/lineMessagingApi';
+
 /**
  * 週間予定を表示（直近7日間）
- * @param {string} replyToken - LINEリプライトークン
+ * @param replyToken LINEリプライトークン
+ * @param userId LINEユーザーID
  */
-export const showWeekSchedule = (replyToken) => {
-  // 1. Googleカレンダーから週間予定を取得
-  const weekEvents = getWeekEvents();
+export const showWeekSchedule = (replyToken: string, userId: string) => {
+  // 1. ユーザーのGoogleカレンダーから週間予定を取得
+  const weekEvents = getUserWeekEvents(userId);
 
   // 2. Flexメッセージを構築
   const flexMessage = buildWeekEventsFlexMessage(weekEvents);

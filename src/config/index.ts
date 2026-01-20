@@ -36,5 +36,15 @@ export const CONFIG = {
     BORDER: '#EEEEEE',
     SUCCESS: '#06C755',
     WARNING: '#FFCC00',
+    GOOGLE_BLUE: '#4285F4',
+  },
+  OAUTH2: {
+    AUTHORIZATION_BASE_URL: 'https://accounts.google.com/o/oauth2/v2/auth',
+    TOKEN_URL: 'https://oauth2.googleapis.com/token',
+    SCOPE: 'https://www.googleapis.com/auth/calendar',
+    CALLBACK_FUNCTION: 'authCallback',
+  },
+  CALENDAR_API: {
+    BASE_URL: 'https://www.googleapis.com/calendar/v3',
   },
 };

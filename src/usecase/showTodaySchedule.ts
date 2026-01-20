@@ -1,14 +1,15 @@
-import { getTodayEvents } from '../infra/google/calendarApi';
+import { getUserTodayEvents } from '../infra/google/userCalendarApi';
 import { buildTodayEventsFlexMessage } from '../infra/line/flexMessageFactory';
 import { sendLineFlexReply } from '../infra/line/lineMessagingApi';
 
 /**
  * 今日の予定を表示
- * @param {string} replyToken - LINEリプライトークン
+ * @param replyToken LINEリプライトークン
+ * @param userId LINEユーザーID
  */
-export const showTodaySchedule = (replyToken) => {
-  // 1. Googleカレンダーから今日の予定を取得
-  const todayEvents = getTodayEvents();
+export const showTodaySchedule = (replyToken: string, userId: string) => {
+  // 1. ユーザーのGoogleカレンダーから今日の予定を取得
+  const todayEvents = getUserTodayEvents(userId);
 
   // 2. Flexメッセージを構築
   const flexMessage = buildTodayEventsFlexMessage(todayEvents);

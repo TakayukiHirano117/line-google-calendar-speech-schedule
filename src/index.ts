@@ -1,8 +1,8 @@
 import { processLineEvent } from './handler/lineWebhookHandler';
+import { handleOAuthCallback } from './handler/oauthCallbackHandler';
+
 /**
  * LINEからのPOSTリクエストを処理
- * @param {Object} e - イベントオブジェクト
- * @returns {Object} JSONレスポンス
  */
 export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Content.TextOutput {
   const requestBody = JSON.parse(e.postData.contents);
@@ -19,12 +19,15 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
 /**
  * 認証確認用GETリクエストを処理
- * @param {Object} e - イベントオブジェクト
- * @returns {Object} テキストレスポンス
+ * OAuth2コールバックまたは通常の認証確認
  */
-export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput {
-  // 各サービスへのアクセス権限を確認
-  CalendarApp.getDefaultCalendar();
+export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput | GoogleAppsScript.HTML.HtmlOutput {
+  // OAuth2コールバックかどうかを判定
+  if (e.parameter && e.parameter.code) {
+    return handleOAuthCallback(e);
+  }
+
+  // 通常の認証確認処理
   PropertiesService.getScriptProperties();
   UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
   Utilities.base64Encode('test');
@@ -35,9 +38,15 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Conten
 }
 
 /**
+ * OAuth2コールバック関数
+ * OAuth2ライブラリが内部で呼び出す
+ */
+export function authCallback(request: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.HtmlOutput {
+  return handleOAuthCallback(request);
+}
+
+/**
  * リクエストボディに有効なイベントがあるかチェック
- * @param {Object} requestBody - リクエストボディ
- * @returns {boolean}
  */
 const hasValidEvents = (requestBody) => {
   return requestBody.events && requestBody.events.length > 0;
@@ -45,8 +54,6 @@ const hasValidEvents = (requestBody) => {
 
 /**
  * JSONレスポンスを作成
- * @param {Object} reposnse - レスポンスデータ
- * @returns {Object}
  */
 const createJsonResponse = (response) => {
   return ContentService
