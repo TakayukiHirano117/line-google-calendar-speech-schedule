@@ -8,7 +8,8 @@ import { buildAuthRequiredFlexMessage } from '../infra/line/flexMessageFactory';
  * @param userId LINEユーザーID
  */
 export const sendAuthRequiredMessage = (replyToken: string, userId: string): void => {
-  const authUrl = getAuthorizationUrl(userId);
+  // 未認証ユーザーのため、強制的に同意画面を表示
+  const authUrl = getAuthorizationUrl(userId, true);
   const flexMessage = buildAuthRequiredFlexMessage(authUrl);
   sendLineFlexReply(replyToken, flexMessage);
 };

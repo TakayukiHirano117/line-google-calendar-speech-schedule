@@ -74,8 +74,10 @@ interface OAuth2Service {
 
   /**
    * 認可URLを取得
+   * @param optAdditionalParameters stateパラメータに埋め込むデータ。ライブラリが自動的に暗号化し、コールバック時にrequest.parameterとして取得可能
+   * @example getAuthorizationUrl({ userId: 'xxx' }) → コールバック時に request.parameter.userId で取得
    */
-  getAuthorizationUrl(): string;
+  getAuthorizationUrl(optAdditionalParameters?: Record<string, string>): string;
 
   /**
    * OAuth2コールバックを処理
@@ -124,6 +126,9 @@ interface LineWebhookEvent {
     type: string;
     id: string;
     text?: string;
+  };
+  postback?: {
+    data: string;
   };
 }
 

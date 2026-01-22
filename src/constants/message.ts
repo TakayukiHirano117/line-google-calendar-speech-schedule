@@ -48,6 +48,7 @@ export const MESSAGE = {
         icon: '💡',
         items: [
           '「ヘルプ」→ この使い方を表示',
+          '「ログアウト」→ Googleカレンダーとの連携を解除',
         ],
       },
     ],

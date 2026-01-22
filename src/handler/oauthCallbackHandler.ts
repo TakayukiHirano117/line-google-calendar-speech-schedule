@@ -3,6 +3,7 @@ import { CONFIG } from '../config/index';
 
 /**
  * OAuth2コールバックを処理してHTMLレスポンスを返す
+ * userIdはstateパラメータから自動的に取得される
  */
 export const handleOAuthCallback = (e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.HtmlOutput => {
   const result = handleOAuth2Callback(e);

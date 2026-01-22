@@ -6,6 +6,7 @@ export const CONFIG = {
   LINE_API: {
     REPLY_ENDPOINT: 'https://api.line.me/v2/bot/message/reply',
     CONTENT_ENDPOINT: 'https://api-data.line.me/v2/bot/message',
+    RICH_MENU_ENDPOINT: 'https://api.line.me/v2/bot/richmenu',
   },
   SPEECH_TO_TEXT: {
     LOCATION: 'global',
@@ -25,6 +26,7 @@ export const CONFIG = {
     TODAY: ['今日の予定'],
     WEEK: ['今週の予定'],
     HELP: ['ヘルプ'],
+    LOGOUT: ['ログアウト'],
   },
   COLORS: {
     PRIMARY: '#06C755',

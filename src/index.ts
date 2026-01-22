@@ -1,5 +1,6 @@
 import { processLineEvent } from './handler/lineWebhookHandler';
 import { handleOAuthCallback } from './handler/oauthCallbackHandler';
+import { createOAuth2Service } from './infra/google/oauth2Service';
 
 /**
  * LINEからのPOSTリクエストを処理
@@ -22,15 +23,22 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
  * OAuth2コールバックまたは通常の認証確認
  */
 export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput | GoogleAppsScript.HTML.HtmlOutput {
+  Logger.log('DoGETTTTTTTTTTTTTTTT')
   // OAuth2コールバックかどうかを判定
   if (e.parameter && e.parameter.code) {
     return handleOAuthCallback(e);
   }
 
   // 通常の認証確認処理
-  PropertiesService.getScriptProperties();
-  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
-  Utilities.base64Encode('test');
+  // PropertiesService.getScriptProperties();
+  // UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
+  // Utilities.base64Encode('test');
+  const service = createOAuth2Service(e.parameter.userId);
+  const authorized = service.handleCallback(e);
+  if (!authorized) {
+    const error = service.getLastError();
+    Logger.log('Error details: ' + error);  // ← これを見て
+  }
 
   return ContentService
     .createTextOutput('✅ 全サービスの認証が完了しました。このページは閉じてOKです。')
