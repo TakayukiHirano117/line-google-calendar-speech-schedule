@@ -582,3 +582,129 @@ export const isSameDay = (date1, date2) => {
     date1.getMonth() === date2.getMonth() &&
     date1.getDate() === date2.getDate();
 };
+
+/**
+ * 認証が必要な場合のFlexメッセージを構築
+ * @param authUrl 認証URL
+ * @returns Flexメッセージ
+ */
+export const buildAuthRequiredFlexMessage = (authUrl: string) => {
+  return {
+    altText: 'Googleカレンダーとの連携が必要です',
+    contents: {
+      type: 'bubble',
+      size: 'kilo',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '🔐',
+            size: '3xl',
+            align: 'center',
+          },
+          {
+            type: 'text',
+            text: 'カレンダー連携',
+            size: 'lg',
+            weight: 'bold',
+            align: 'center',
+            margin: 'lg',
+            color: CONFIG.COLORS.TEXT_PRIMARY,
+          },
+          {
+            type: 'text',
+            text: 'Googleカレンダーとの連携が必要です。\n下のボタンをタップして認証してください。',
+            size: 'sm',
+            color: CONFIG.COLORS.TEXT_SECONDARY,
+            wrap: true,
+            align: 'center',
+            margin: 'lg',
+          },
+        ],
+        paddingAll: 'xl',
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'Googleアカウントで連携',
+              uri: authUrl + (authUrl.includes('?') ? '&' : '?') + 'openExternalBrowser=1',
+            },
+            style: 'primary',
+            color: CONFIG.COLORS.GOOGLE_BLUE,
+          },
+        ],
+        paddingAll: 'lg',
+      },
+    },
+  };
+};
+
+/**
+ * 再認証が必要な場合のFlexメッセージを構築
+ * @param authUrl 認証URL
+ * @returns Flexメッセージ
+ */
+export const buildReauthRequiredFlexMessage = (authUrl: string) => {
+  return {
+    altText: '再認証が必要です',
+    contents: {
+      type: 'bubble',
+      size: 'kilo',
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'text',
+            text: '🔄',
+            size: '3xl',
+            align: 'center',
+          },
+          {
+            type: 'text',
+            text: '再認証が必要です',
+            size: 'lg',
+            weight: 'bold',
+            align: 'center',
+            margin: 'lg',
+            color: CONFIG.COLORS.TEXT_PRIMARY,
+          },
+          {
+            type: 'text',
+            text: 'カレンダーへのアクセス権限が無効になりました。\n再度認証してください。',
+            size: 'sm',
+            color: CONFIG.COLORS.TEXT_SECONDARY,
+            wrap: true,
+            align: 'center',
+            margin: 'lg',
+          },
+        ],
+        paddingAll: 'xl',
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        contents: [
+          {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: '再認証する',
+              uri: authUrl + (authUrl.includes('?') ? '&' : '?') + 'openExternalBrowser=1',
+            },
+            style: 'primary',
+            color: CONFIG.COLORS.GOOGLE_BLUE,
+          },
+        ],
+        paddingAll: 'lg',
+      },
+    },
+  };
+};

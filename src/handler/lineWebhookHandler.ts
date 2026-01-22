@@ -4,37 +4,71 @@ import { createEventFromVoice } from '../usecase/createEventFromVoice';
 import { showHelp } from '../usecase/showHelp';
 import { showWeekSchedule } from '../usecase/showWeekSchedule';
 import { showTodaySchedule } from '../usecase/showTodaySchedule';
+import { showLogout } from '../usecase/showLogout';
 import { InvalidRequestUsecase } from '../usecase/InvalidRequestUsecase';
+import { hasValidToken } from '../infra/google/oauth2Service';
+import { sendAuthRequiredMessage } from '../usecase/authUsecase';
+
 /**
  * LINEイベントを処理
  * @param {Object} lineEvent - LINEイベント
  */
-export const processLineEvent = (lineEvent) => {
+export const processLineEvent = (lineEvent: LineWebhookEvent) => {
   const replyToken = lineEvent.replyToken;
+  const userId = extractUserId(lineEvent);
 
+  // userIdが取得できない場合はエラー
+  if (!userId) {
+    logError('processLineEvent', 'userIdを取得できませんでした');
+    InvalidRequestUsecase(replyToken);
+    return;
+  }
+
+  // 認証状態をチェック まずみるこれ
+  if (!hasValidToken(userId)) {
+    // 未認証の場合は認証URLを送信
+    sendAuthRequiredMessage(replyToken, userId);
+    return;
+  }
+
+  // 認証済みの場合は通常処理
   if (isAudioMessage(lineEvent)) {
-    createEventFromVoice(replyToken, lineEvent.message.id);
+    createEventFromVoice(replyToken, lineEvent.message.id, userId);
   } else if (isTextMessage(lineEvent)) {
-    processTextMessage(replyToken, lineEvent.message.text);
+    processTextMessage(replyToken, lineEvent.message.text, userId);
+  } else if (isPostbackEvent(lineEvent)) {
+    processPostbackEvent(replyToken, lineEvent.postback.data, userId);
   } else {
     InvalidRequestUsecase(replyToken);
   }
 };
 
 /**
- * テキストメッセージを処理
- * @param {string} replyToken - リプライトークン
- * @param {string} messageText - メッセージテキスト
+ * LINEイベントからuserIdを抽出
+ * @param lineEvent LINEイベント
+ * @returns userId または undefined
  */
-const processTextMessage = (replyToken, messageText) => {
+const extractUserId = (lineEvent: LineWebhookEvent): string | undefined => {
+  return lineEvent.source?.userId;
+};
+
+/**
+ * テキストメッセージを処理
+ * @param replyToken リプライトークン
+ * @param messageText メッセージテキスト
+ * @param userId LINEユーザーID
+ */
+const processTextMessage = (replyToken: string, messageText: string, userId: string) => {
   const normalizedText = messageText.trim();
 
   if (isHelpCommand(normalizedText)) {
     showHelp(replyToken);
   } else if (isWeekCommand(normalizedText)) {
-    showWeekSchedule(replyToken);
+    showWeekSchedule(replyToken, userId);
   } else if (isTodayCommand(normalizedText)) {
-    showTodaySchedule(replyToken);
+    showTodaySchedule(replyToken, userId);
+  } else if (isLogoutCommand(normalizedText)) {
+    showLogout(replyToken, userId);
   } else {
     InvalidRequestUsecase(replyToken);
   }
@@ -83,6 +117,53 @@ const isWeekCommand = (text) => {
  */
 const isHelpCommand = (text) => {
   return CONFIG.COMMANDS.HELP.some(command => text.includes(command));
+};
+
+/**
+ * ログアウトコマンドかチェック
+ * @param {string} text - テキスト
+ * @returns {boolean}
+ */
+const isLogoutCommand = (text) => {
+  return CONFIG.COMMANDS.LOGOUT.some(command => text.includes(command));
+};
+
+/**
+ * Postbackイベントかチェック
+ * @param {Object} lineEvent - LINEイベント
+ * @returns {boolean}
+ */
+const isPostbackEvent = (lineEvent) => {
+  return lineEvent.type === 'postback' && lineEvent.postback;
+};
+
+/**
+ * Postbackイベントを処理
+ * @param replyToken リプライトークン
+ * @param postbackData Postbackデータ
+ * @param userId LINEユーザーID
+ */
+const processPostbackEvent = (replyToken: string, postbackData: string, userId: string) => {
+  // Postbackデータをパース（例: "action=logout"）
+  const actionMatch = postbackData.match(/action=([^&]+)/);
+  const action = actionMatch ? actionMatch[1] : null;
+
+  switch (action) {
+    case 'logout':
+      showLogout(replyToken, userId);
+      break;
+    case 'today':
+      showTodaySchedule(replyToken, userId);
+      break;
+    case 'week':
+      showWeekSchedule(replyToken, userId);
+      break;
+    case 'help':
+      showHelp(replyToken);
+      break;
+    default:
+      InvalidRequestUsecase(replyToken);
+  }
 };
 
 // ============================================

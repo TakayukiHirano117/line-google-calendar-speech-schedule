@@ -39,3 +39,19 @@ export const getServiceAccountKey = () => {
   const keyJson = getScriptProperty('SERVICE_ACCOUNT_KEY');
   return JSON.parse(keyJson);
 };
+
+/**
+ * OAuth2クライアントIDを取得
+ * @returns {string}
+ */
+export const getOAuth2ClientId = () => {
+  return getScriptProperty('OAUTH2_CLIENT_ID');
+};
+
+/**
+ * OAuth2クライアントシークレットを取得
+ * @returns {string}
+ */
+export const getOAuth2ClientSecret = () => {
+  return getScriptProperty('OAUTH2_CLIENT_SECRET');
+};

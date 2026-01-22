@@ -1,4 +1,8 @@
 export const MESSAGE = {
+  AUTH_REQUIRED: 'Googleカレンダーとの連携が必要です。\n下のボタンをタップして認証してください。',
+  AUTH_SUCCESS: '認証が完了しました！\n音声メッセージで予定を登録できます。',
+  AUTH_FAILED: '認証に失敗しました。もう一度お試しください。',
+  AUTH_REVOKED: 'Googleカレンダーとの連携を解除しました。',
   REQUEST_AUDIO: '音声メッセージを送信してください\n\nまたは以下のコマンドをテキストで送信：\n・「今日の予定」\n・「今週の予定」',
   AUDIO_FETCH_FAILED: '音声の取得に失敗しました',
   SPEECH_RECOGNITION_FAILED: '音声の認識に失敗しました',
@@ -44,6 +48,7 @@ export const MESSAGE = {
         icon: '💡',
         items: [
           '「ヘルプ」→ この使い方を表示',
+          '「ログアウト」→ Googleカレンダーとの連携を解除',
         ],
       },
     ],
