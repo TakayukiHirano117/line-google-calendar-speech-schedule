@@ -24,6 +24,12 @@ export const processLineEvent = (lineEvent: LineWebhookEvent) => {
     return;
   }
 
+  // followイベントの処理（LINE Console側でwelcomeメッセージ設定済みのため、何もせず終了）
+  if (isFollowEvent(lineEvent)) {
+    logDebug('processLineEvent', 'followイベントを受信しました');
+    return;
+  }
+
   // 認証状態をチェック まずみるこれ
   if (!hasValidToken(userId)) {
     // 未認証の場合は認証URLを送信
@@ -135,6 +141,15 @@ const isLogoutCommand = (text) => {
  */
 const isPostbackEvent = (lineEvent) => {
   return lineEvent.type === 'postback' && lineEvent.postback;
+};
+
+/**
+ * Followイベントかチェック
+ * @param {Object} lineEvent - LINEイベント
+ * @returns {boolean}
+ */
+const isFollowEvent = (lineEvent) => {
+  return lineEvent.type === 'follow';
 };
 
 /**
