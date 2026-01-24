@@ -1,6 +1,7 @@
 import { processLineEvent } from './handler/lineWebhookHandler';
-import { handleOAuthCallback } from './handler/oauthCallbackHandler';
-import { createOAuth2Service } from './infra/google/oauth2Service';
+import { OAuthCallbackHandler } from './handler/oauthCallbackHandler';
+import { OAuth2Manager } from './infra/google/OAuth2Manager';
+import { getOAuth2ClientId, getOAuth2ClientSecret } from './config/getProperty';
 
 /**
  * LINEからのPOSTリクエストを処理
@@ -25,17 +26,22 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput | GoogleAppsScript.HTML.HtmlOutput {
   // OAuth2コールバックかどうかを判定
   if (e.parameter && e.parameter.code) {
-    return handleOAuthCallback(e);
+    return new OAuthCallbackHandler().handleOAuthCallback(e);
   }
 
   // 通常の認証確認処理
   // PropertiesService.getScriptProperties();
   // UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
   // Utilities.base64Encode('test');
-  const service = createOAuth2Service(e.parameter.userId);
-  const authorized = service.handleCallback(e);
-  if (!authorized) {
-    const error = service.getLastError();
+  const userId = e.parameter.userId;
+  const oauth2Service = new OAuth2Manager(
+    userId,
+    getOAuth2ClientId(),
+    getOAuth2ClientSecret()
+  );
+  const authorized = oauth2Service.handleCallback(e);
+  if (!authorized.success) {
+    const error = authorized.error;
     Logger.log('Error details: ' + error);  // ← これを見て
   }
 
@@ -49,7 +55,7 @@ export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Conten
  * OAuth2ライブラリが内部で呼び出す
  */
 export function authCallback(request: GoogleAppsScript.Events.DoGet): GoogleAppsScript.HTML.HtmlOutput {
-  return handleOAuthCallback(request);
+  return new OAuthCallbackHandler().handleOAuthCallback(request);
 }
 
 /**

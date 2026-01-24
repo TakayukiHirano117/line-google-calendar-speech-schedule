@@ -6,7 +6,8 @@ import { buildEventCreatedFlexMessage, buildReauthRequiredFlexMessage } from '..
 import { sendLineFlexReply } from '../infra/line/lineMessagingApi';
 import { sendLineTextReply } from '../infra/line/lineMessagingApi';
 import { MESSAGE } from '../constants/message';
-import { getAuthorizationUrl } from '../infra/google/oauth2Service';
+import { OAuth2Manager } from '../infra/google/OAuth2Manager';
+import { getOAuth2ClientId, getOAuth2ClientSecret } from '../config/getProperty';
 
 /**
  * 音声メッセージからカレンダーイベントを作成
@@ -45,7 +46,12 @@ export const createEventFromVoice = (replyToken: string, messageId: string, user
     sendLineFlexReply(replyToken, flexMessage);
   } else if (result.requiresReauth) {
     // 再認証が必要な場合
-    const authUrl = getAuthorizationUrl(userId);
+    const oauth2Service = new OAuth2Manager(
+      userId,
+      getOAuth2ClientId(),
+      getOAuth2ClientSecret()
+    );
+    const authUrl = oauth2Service.getAuthorizationUrl();
     const flexMessage = buildReauthRequiredFlexMessage(authUrl);
     sendLineFlexReply(replyToken, flexMessage);
   } else {

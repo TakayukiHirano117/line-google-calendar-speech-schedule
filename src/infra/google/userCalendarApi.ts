@@ -1,6 +1,7 @@
 import { CONFIG } from '../../config/index';
-import { getAccessToken, revokeToken } from './oauth2Service';
+import { OAuth2Manager } from './OAuth2Manager';
 import { logDebug, logError } from '../../handler/lineWebhookHandler';
+import { getOAuth2ClientId, getOAuth2ClientSecret } from '../../config/getProperty';
 
 const CALENDAR_API_BASE = CONFIG.CALENDAR_API.BASE_URL;
 
@@ -14,7 +15,13 @@ export const createUserCalendarEvent = (
   userId: string,
   eventData: CalendarEventData
 ): CreateEventResult => {
-  const accessToken = getAccessToken(userId);
+  const oauth2Service = new OAuth2Manager(
+    userId,
+    getOAuth2ClientId(),
+    getOAuth2ClientSecret()
+  );
+  
+  const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     logError('カレンダーイベント作成', 'アクセストークンがありません');
     return { success: false, error: 'NO_TOKEN', requiresReauth: true };
@@ -57,7 +64,7 @@ export const createUserCalendarEvent = (
         return { success: true, eventId: result.id };
       }
       case 401:
-        revokeToken(userId);
+        oauth2Service.revokeToken();
         return { success: false, error: 'TOKEN_EXPIRED', requiresReauth: true };
       case 403:
         return { success: false, error: 'ACCESS_DENIED', requiresReauth: true };
@@ -79,7 +86,13 @@ export const createUserCalendarEvent = (
  * @returns イベントリスト
  */
 export const getUserTodayEvents = (userId: string): CalendarEvent[] => {
-  const accessToken = getAccessToken(userId);
+  const oauth2Service = new OAuth2Manager(
+    userId,
+    getOAuth2ClientId(),
+    getOAuth2ClientSecret()
+  );
+  
+  const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     logError('今日の予定取得', 'アクセストークンがありません');
     return [];
@@ -98,7 +111,13 @@ export const getUserTodayEvents = (userId: string): CalendarEvent[] => {
  * @returns 日付ごとのイベント辞書
  */
 export const getUserWeekEvents = (userId: string): EventsByDate => {
-  const accessToken = getAccessToken(userId);
+  const oauth2Service = new OAuth2Manager(
+    userId,
+    getOAuth2ClientId(),
+    getOAuth2ClientSecret()
+  );
+  
+  const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     logError('週間予定取得', 'アクセストークンがありません');
     return {};
