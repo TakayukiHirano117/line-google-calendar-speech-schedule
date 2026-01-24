@@ -20,10 +20,9 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
 
 /**
  * 認証確認用GETリクエストを処理
- * OAuth2コールバックまたは通常の認証確認
+ * OAuth2コールバック
  */
 export function doGet(e: GoogleAppsScript.Events.DoGet): GoogleAppsScript.Content.TextOutput | GoogleAppsScript.HTML.HtmlOutput {
-  Logger.log('DoGETTTTTTTTTTTTTTTT')
   // OAuth2コールバックかどうかを判定
   if (e.parameter && e.parameter.code) {
     return handleOAuthCallback(e);

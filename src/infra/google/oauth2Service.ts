@@ -12,7 +12,7 @@ export const createOAuth2Service = (userId: string, forceConsent: boolean = fals
     .setClientId(getOAuth2ClientId())
     .setClientSecret(getOAuth2ClientSecret())
     .setCallbackFunction(CONFIG.OAUTH2.CALLBACK_FUNCTION)
-    .setPropertyStore(PropertiesService.getUserProperties())
+    .setPropertyStore(PropertiesService.getScriptProperties())
     .setScope(CONFIG.OAUTH2.SCOPE)
     .setParam('access_type', 'offline');
 
