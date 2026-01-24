@@ -748,7 +748,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
               action: {
                 type: "uri",
                 label: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3067\u898B\u308B",
-                uri: eventUrl
+                uri: eventUrl + (eventUrl.includes("?") ? "&" : "?") + "openExternalBrowser=1"
               },
               style: "primary",
               color: CONFIG.COLORS.PRIMARY

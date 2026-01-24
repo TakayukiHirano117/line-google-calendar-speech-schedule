@@ -111,7 +111,7 @@ export const buildEventCreatedFlexMessage = (eventData, eventUrl) => {
             action: {
               type: 'uri',
               label: 'カレンダーで見る',
-              uri: eventUrl,
+              uri: eventUrl + (eventUrl.includes('?') ? '&' : '?') + 'openExternalBrowser=1',
             },
             style: 'primary',
             color: CONFIG.COLORS.PRIMARY,
