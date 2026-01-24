@@ -1,10 +1,10 @@
 import { CONFIG } from '../../config/index';
 
 /**
- * Google OAuth2認証サービスクラス
+ * OAuth2認証管理クラス
  * ユーザーごとのOAuth2トークン管理とGoogle OAuth2 APIとの通信を担当
  */
-export class GoogleOAuth2Service {
+export class OAuth2Manager {
   /**
    * @param userId LINEユーザーID
    * @param clientId OAuth2クライアントID

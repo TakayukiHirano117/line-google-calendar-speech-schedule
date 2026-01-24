@@ -1,13 +1,14 @@
 import { CONFIG } from '../config/index';
-import { createEventFromVoice } from '../usecase/createEventFromVoice';
+import { createEventFromVoice } from '../usecase/CreateEventFromVoiceUseCase';
 
-import { showHelp } from '../usecase/showHelp';
-import { showWeekSchedule } from '../usecase/showWeekSchedule';
-import { showTodaySchedule } from '../usecase/showTodaySchedule';
-import { showLogout } from '../usecase/showLogout';
-import { InvalidRequestUsecase } from '../usecase/InvalidRequestUsecase';
-import { hasValidToken } from '../infra/google/oauth2Service';
-import { sendAuthRequiredMessage } from '../usecase/authUsecase';
+import { showHelp } from '../usecase/ShowHelpUseCase';
+import { showWeekSchedule } from '../usecase/ShowWeekScheduleUseCase';
+import { showTodaySchedule } from '../usecase/ShowTodayScheduleUseCase';
+import { showLogout } from '../usecase/ShowLogoutUseCase';
+import { InvalidRequestUseCase } from '../usecase/InvalidRequestUseCase';
+import { OAuth2Manager } from '../infra/google/OAuth2Manager';
+import { getOAuth2ClientId, getOAuth2ClientSecret } from '../config/getProperty';
+import { sendAuthRequiredMessage } from '../usecase/SendAuthRequiredMessageUseCase';
 
 /**
  * LINEイベントを処理
@@ -20,7 +21,7 @@ export const processLineEvent = (lineEvent: LineWebhookEvent) => {
   // userIdが取得できない場合はエラー
   if (!userId) {
     logError('processLineEvent', 'userIdを取得できませんでした');
-    InvalidRequestUsecase(replyToken);
+    InvalidRequestUseCase(replyToken);
     return;
   }
 
@@ -30,8 +31,14 @@ export const processLineEvent = (lineEvent: LineWebhookEvent) => {
     return;
   }
 
-  // 認証状態をチェック まずみるこれ
-  if (!hasValidToken(userId)) {
+  // 認証状態をチェック
+  const oauth2Service = new OAuth2Manager(
+    userId,
+    getOAuth2ClientId(),
+    getOAuth2ClientSecret()
+  );
+  
+  if (!oauth2Service.hasValidToken()) {
     // 未認証の場合は認証URLを送信
     sendAuthRequiredMessage(replyToken, userId);
     return;
@@ -45,7 +52,7 @@ export const processLineEvent = (lineEvent: LineWebhookEvent) => {
   } else if (isPostbackEvent(lineEvent)) {
     processPostbackEvent(replyToken, lineEvent.postback.data, userId);
   } else {
-    InvalidRequestUsecase(replyToken);
+    InvalidRequestUseCase(replyToken);
   }
 };
 
@@ -76,7 +83,7 @@ const processTextMessage = (replyToken: string, messageText: string, userId: str
   } else if (isLogoutCommand(normalizedText)) {
     showLogout(replyToken, userId);
   } else {
-    InvalidRequestUsecase(replyToken);
+    InvalidRequestUseCase(replyToken);
   }
 };
 
@@ -177,7 +184,7 @@ const processPostbackEvent = (replyToken: string, postbackData: string, userId: 
       showHelp(replyToken);
       break;
     default:
-      InvalidRequestUsecase(replyToken);
+      InvalidRequestUseCase(replyToken);
   }
 };
 

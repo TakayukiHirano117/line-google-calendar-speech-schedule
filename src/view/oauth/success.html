@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>認証完了</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, {{PRIMARY_COLOR}} 0%, #00a040 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    }
+    .icon {
+      width: 80px;
+      height: 80px;
+      background: {{PRIMARY_COLOR}};
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .icon svg {
+      width: 40px;
+      height: 40px;
+      fill: white;
+    }
+    h1 {
+      color: {{TEXT_PRIMARY}};
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    p {
+      color: {{TEXT_SECONDARY}};
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+    .note {
+      font-size: 14px;
+      color: #999;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    </div>
+    <h1>認証が完了しました</h1>
+    <p>Googleカレンダーとの連携が完了しました。</p>
+    <p>LINEに戻って音声メッセージを送信してください。</p>
+    <p class="note">このページは閉じてOKです</p>
+  </div>
+</body>
+</html>
