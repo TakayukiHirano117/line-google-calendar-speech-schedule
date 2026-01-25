@@ -251,7 +251,7 @@ export const buildEventRowContent = (event) => {
  */
 export const buildWeekEventsFlexMessage = (eventsByDate) => {
   const dateKeys = Object.keys(eventsByDate);
-  
+
   let totalEvents = 0;
   dateKeys.forEach(key => {
     totalEvents += eventsByDate[key].events.length;
@@ -348,7 +348,7 @@ export const buildDayRowContent = (date, events, isToday) => {
   const day = date.getDate();
   const dayOfWeek = dayNames[date.getDay()];
   const dateText = `${month}/${day}（${dayOfWeek}）`;
-  
+
   const eventCount = events.length;
   const countText = eventCount === 0 ? '−' : `${eventCount}件`;
   const eventSummary = eventCount === 0
@@ -459,7 +459,7 @@ export const buildNoEventsFlexMessage = (title, subtitle, message) => {
  */
 export const buildHelpFlexMessage = () => {
   const helpData = MESSAGE.HELP;
-  
+
   const sectionContents = helpData.SECTIONS.flatMap((section, index) => {
     const sectionBox = {
       type: 'box',
@@ -503,7 +503,7 @@ export const buildHelpFlexMessage = () => {
       ],
       margin: index === 0 ? 'none' : 'xl',
     };
-    
+
     return sectionBox;
   });
 

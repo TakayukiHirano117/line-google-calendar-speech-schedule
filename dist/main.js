@@ -620,7 +620,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     NO_EVENTS_TODAY: "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093",
     NO_EVENTS_WEEK: "\u4ECA\u9031\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093",
     HELP: {
-      TITLE: "Voice Calendar\u306E\u4F7F\u3044\u65B9",
+      TITLE: "\u3076\u3044\u3064\u30FC\u306E\u4F7F\u3044\u65B9",
       SECTIONS: [
         {
           title: "\u4E88\u5B9A\u3092\u767B\u9332\u3059\u308B",
@@ -1105,7 +1105,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       return sectionBox;
     });
     return {
-      altText: "Voical\u306E\u4F7F\u3044\u65B9",
+      altText: "\u3076\u3044\u3064\u30FC\u306E\u4F7F\u3044\u65B9",
       contents: {
         type: "bubble",
         size: "mega",
