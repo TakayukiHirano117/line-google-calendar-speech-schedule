@@ -1,24 +1,34 @@
-import { getUserTodayEvents } from '../infra/google/userCalendarApi';
-import { buildTodayEventsFlexMessage } from '../infra/line/flexMessageFactory';
-import { sendLineFlexReply } from '../infra/line/lineMessagingApi';
+import { UserCalendar } from '../infra/google/UserCalendar';
+import { FlexMessageFactory } from '../infra/line/flexMessageFactory';
+import { LineMessaging } from '../infra/line/LineMessaging';
 
 /**
  * 今日の予定を表示するUseCase
  */
 export class ShowTodayScheduleUseCase {
   /**
+   * @param userCalendar ユーザーカレンダー
+   * @param lineMessaging LINE Messaging
+   * @param flexMessageFactory Flexメッセージファクトリー
+   */
+  constructor(
+    private readonly userCalendar: UserCalendar,
+    private readonly lineMessaging: LineMessaging,
+    private readonly flexMessageFactory: FlexMessageFactory
+  ) {}
+
+  /**
    * 今日の予定を表示
    * @param replyToken LINEリプライトークン
-   * @param userId LINEユーザーID
    */
-  public execute(replyToken: string, userId: string): void {
+  public execute(replyToken: string): void {
     // 1. ユーザーのGoogleカレンダーから今日の予定を取得
-    const todayEvents = getUserTodayEvents(userId);
+    const todayEvents = this.userCalendar.getTodayEvents();
 
     // 2. Flexメッセージを構築
-    const flexMessage = buildTodayEventsFlexMessage(todayEvents);
+    const flexMessage = this.flexMessageFactory.buildTodayEventsMessage(todayEvents);
 
     // 3. LINEに返信
-    sendLineFlexReply(replyToken, flexMessage);
+    this.lineMessaging.sendFlexReply(replyToken, flexMessage);
   }
 }

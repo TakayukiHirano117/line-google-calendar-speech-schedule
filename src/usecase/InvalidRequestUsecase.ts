@@ -1,4 +1,4 @@
-import { sendLineTextReply } from '../infra/line/lineMessagingApi';
+import { LineMessaging } from '../infra/line/LineMessaging';
 import { MESSAGE } from '../constants/message';
 
 /**
@@ -6,10 +6,15 @@ import { MESSAGE } from '../constants/message';
  */
 export class InvalidRequestUseCase {
   /**
+   * @param lineMessaging LINE Messaging
+   */
+  constructor(private readonly lineMessaging: LineMessaging) {}
+
+  /**
    * 不正なリクエストに対するエラーメッセージを送信
    * @param replyToken LINEリプライトークン
    */
   public execute(replyToken: string): void {
-    sendLineTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+    this.lineMessaging.sendTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
   }
 }

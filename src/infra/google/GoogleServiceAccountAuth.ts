@@ -1,10 +1,10 @@
 import { getServiceAccountKey } from '../../config/getProperty';
 
 /**
- * サービスアカウント認証サービス
+ * Google サービスアカウント認証
  * Google Cloud Platform サービスアカウントを使用したアクセストークン生成を担当
  */
-export class ServiceAccountAuthService {
+export class GoogleServiceAccountAuth {
   private readonly serviceAccountKey: any;
 
   constructor() {
