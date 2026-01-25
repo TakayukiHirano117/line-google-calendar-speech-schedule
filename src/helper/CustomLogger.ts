@@ -1,7 +1,7 @@
 /**
  * アプリケーション全体のログ出力を担当するクラス
  */
-export class Logger {
+export class CustomLogger {
   /**
    * デバッグログを出力
    * @param context - コンテキスト

@@ -79,8 +79,8 @@ function authCallback() {}
     return getScriptProperty("OAUTH2_CLIENT_SECRET");
   };
 
-  // src/Logger.ts
-  var Logger2 = class {
+  // src/helper/CustomLogger.ts
+  var CustomLogger = class {
     /**
      * デバッグログを出力
      * @param context - コンテキスト
@@ -114,7 +114,7 @@ function authCallback() {}
       const response = UrlFetchApp.fetch(contentUrl, requestOptions);
       return response.getBlob();
     } catch (error) {
-      Logger2.logError("LINE\u97F3\u58F0\u30B3\u30F3\u30C6\u30F3\u30C4\u53D6\u5F97", error);
+      CustomLogger.logError("LINE\u97F3\u58F0\u30B3\u30F3\u30C6\u30F3\u30C4\u53D6\u5F97", error);
       return null;
     }
   };
@@ -159,7 +159,7 @@ function authCallback() {}
     const response = UrlFetchApp.fetch(CONFIG.LINE_API.REPLY_ENDPOINT, requestOptions);
     const responseCode = response.getResponseCode();
     if (responseCode !== 200) {
-      Logger2.logError("LINE\u8FD4\u4FE1", response.getContentText());
+      CustomLogger.logError("LINE\u8FD4\u4FE1", response.getContentText());
     }
   };
 
@@ -222,11 +222,11 @@ function authCallback() {}
     try {
       const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
       const responseData = JSON.parse(response.getContentText());
-      Logger2.logDebug("Speech-to-Text v2 \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
-      Logger2.logDebug("Speech-to-Text v2 \u7D50\u679C", JSON.stringify(responseData));
+      CustomLogger.logDebug("Speech-to-Text v2 \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
+      CustomLogger.logDebug("Speech-to-Text v2 \u7D50\u679C", JSON.stringify(responseData));
       return extractTranscriptFromSpeechResponse(responseData);
     } catch (error) {
-      Logger2.logError("Speech-to-Text v2", error);
+      CustomLogger.logError("Speech-to-Text v2", error);
       return null;
     }
   };
@@ -282,11 +282,11 @@ function authCallback() {}
     try {
       const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
       const responseData = JSON.parse(response.getContentText());
-      Logger2.logDebug("Gemini \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
-      Logger2.logDebug("Gemini \u7D50\u679C", JSON.stringify(responseData));
+      CustomLogger.logDebug("Gemini \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
+      CustomLogger.logDebug("Gemini \u7D50\u679C", JSON.stringify(responseData));
       return parseGeminiResponseToEventData(responseData);
     } catch (error) {
-      Logger2.logError("Gemini API", error);
+      CustomLogger.logError("Gemini API", error);
       return null;
     }
   };
@@ -360,11 +360,11 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         return null;
       }
       const jsonString = extractJsonFromText(generatedText);
-      Logger2.logDebug("\u62BD\u51FA\u3055\u308C\u305FJSON", jsonString);
+      CustomLogger.logDebug("\u62BD\u51FA\u3055\u308C\u305FJSON", jsonString);
       const eventData = JSON.parse(jsonString);
       return isValidEventData(eventData) ? eventData : null;
     } catch (error) {
-      Logger2.logError("Gemini \u30EC\u30B9\u30DD\u30F3\u30B9\u89E3\u6790", error);
+      CustomLogger.logError("Gemini \u30EC\u30B9\u30DD\u30F3\u30B9\u89E3\u6790", error);
       return null;
     }
   };
@@ -462,7 +462,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      CustomLogger.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return { success: false, error: "NO_TOKEN", requiresReauth: true };
     }
     const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events`;
@@ -494,7 +494,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         case 200:
         case 201: {
           const result = JSON.parse(response.getContentText());
-          Logger2.logDebug("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210\u6210\u529F", result.id);
+          CustomLogger.logDebug("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210\u6210\u529F", result.id);
           return { success: true, eventId: result.id };
         }
         case 401:
@@ -505,11 +505,11 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         case 429:
           return { success: false, error: "RATE_LIMITED", requiresReauth: false };
         default:
-          Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", response.getContentText());
+          CustomLogger.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", response.getContentText());
           return { success: false, error: "API_ERROR", requiresReauth: false };
       }
     } catch (error) {
-      Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", error);
+      CustomLogger.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", error);
       return { success: false, error: String(error), requiresReauth: false };
     }
   };
@@ -521,7 +521,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      Logger2.logError("\u4ECA\u65E5\u306E\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      CustomLogger.logError("\u4ECA\u65E5\u306E\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return [];
     }
     const today = /* @__PURE__ */ new Date();
@@ -537,7 +537,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      Logger2.logError("\u9031\u9593\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      CustomLogger.logError("\u9031\u9593\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return {};
     }
     const today = /* @__PURE__ */ new Date();
@@ -578,7 +578,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       const response = UrlFetchApp.fetch(`${endpoint}?${params}`, options);
       const responseCode = response.getResponseCode();
       if (responseCode !== 200) {
-        Logger2.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", response.getContentText());
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", response.getContentText());
         return [];
       }
       const result = JSON.parse(response.getContentText());
@@ -590,7 +590,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         isAllDay: !item.start.dateTime
       }));
     } catch (error) {
-      Logger2.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", error);
+      CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", error);
       return [];
     }
   };
@@ -1521,12 +1521,12 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       const replyToken = lineEvent.replyToken;
       const userId = this.extractUserId(lineEvent);
       if (!userId) {
-        Logger2.logError("handleEvent", "userId\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F");
+        CustomLogger.logError("handleEvent", "userId\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F");
         this.invalidRequestUseCase.execute(replyToken);
         return;
       }
       if (this.isFollowEvent(lineEvent)) {
-        Logger2.logDebug("handleEvent", "follow\u30A4\u30D9\u30F3\u30C8\u3092\u53D7\u4FE1\u3057\u307E\u3057\u305F");
+        CustomLogger.logDebug("handleEvent", "follow\u30A4\u30D9\u30F3\u30C8\u3092\u53D7\u4FE1\u3057\u307E\u3057\u305F");
         return;
       }
       if (!this.checkAuthenticationUseCase.execute(userId)) {

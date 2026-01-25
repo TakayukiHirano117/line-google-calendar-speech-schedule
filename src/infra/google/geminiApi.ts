@@ -1,6 +1,6 @@
 import { getGeminiApiKey } from '../../config/getProperty';
 import { CONFIG } from '../../config/index';
-import { Logger } from '../../Logger';
+import { CustomLogger } from '../../helper/CustomLogger';
 
 /**
  * テキストからカレンダーイベント情報を抽出
@@ -27,12 +27,12 @@ export const extractCalendarEventFromText = (transcribedText) => {
     const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
     const responseData = JSON.parse(response.getContentText());
 
-    Logger.logDebug('Gemini ステータス', response.getResponseCode());
-    Logger.logDebug('Gemini 結果', JSON.stringify(responseData));
+    CustomLogger.logDebug('Gemini ステータス', response.getResponseCode());
+    CustomLogger.logDebug('Gemini 結果', JSON.stringify(responseData));
 
     return parseGeminiResponseToEventData(responseData);
   } catch (error) {
-    Logger.logError('Gemini API', error);
+    CustomLogger.logError('Gemini API', error);
     return null;
   }
 };
@@ -143,12 +143,12 @@ export const parseGeminiResponseToEventData = (responseData) => {
     }
 
     const jsonString = extractJsonFromText(generatedText);
-    Logger.logDebug('抽出されたJSON', jsonString);
+    CustomLogger.logDebug('抽出されたJSON', jsonString);
 
     const eventData = JSON.parse(jsonString);
     return isValidEventData(eventData) ? eventData : null;
   } catch (error) {
-    Logger.logError('Gemini レスポンス解析', error);
+    CustomLogger.logError('Gemini レスポンス解析', error);
     return null;
   }
 };

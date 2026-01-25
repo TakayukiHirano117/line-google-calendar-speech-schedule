@@ -1,4 +1,4 @@
-import { Logger } from '../../Logger';
+import { CustomLogger } from '../../helper/CustomLogger';
 
 /**
  * Googleカレンダーにイベントを作成
@@ -18,12 +18,12 @@ export const createGoogleCalendarEvent = (eventData) => {
     const createdEvent = calendar.createEvent(eventData.title, startTime, endTime, eventOptions);
     const eventId = createdEvent.getId();
 
-    Logger.logDebug('カレンダーイベント作成成功', eventData.title);
-    Logger.logDebug('イベントID', eventId);
+    CustomLogger.logDebug('カレンダーイベント作成成功', eventData.title);
+    CustomLogger.logDebug('イベントID', eventId);
 
     return eventId;
   } catch (error) {
-    Logger.logError('カレンダーイベント作成', error);
+    CustomLogger.logError('カレンダーイベント作成', error);
     return null;
   }
 };

@@ -8,7 +8,7 @@ import { InvalidRequestUseCase } from '../usecase/InvalidRequestUseCase';
 import { SendAuthRequiredMessageUseCase } from '../usecase/SendAuthRequiredMessageUseCase';
 import { CheckAuthenticationUseCase } from '../usecase/CheckAuthenticationUseCase';
 import { getOAuth2ClientId, getOAuth2ClientSecret } from '../config/getProperty';
-import { Logger } from '../Logger';
+import { CustomLogger } from '../helper/CustomLogger';
 
 /**
  * LINEからのWebhookイベントを処理するHandler
@@ -92,14 +92,14 @@ export class LineWebHookHandler {
 
     // userIdが取得できない場合はエラー
     if (!userId) {
-      Logger.logError('handleEvent', 'userIdを取得できませんでした');
+      CustomLogger.logError('handleEvent', 'userIdを取得できませんでした');
       this.invalidRequestUseCase.execute(replyToken);
       return;
     }
 
     // followイベントの処理（LINE Console側でwelcomeメッセージ設定済みのため、何もせず終了）
     if (this.isFollowEvent(lineEvent)) {
-      Logger.logDebug('handleEvent', 'followイベントを受信しました');
+      CustomLogger.logDebug('handleEvent', 'followイベントを受信しました');
       return;
     }
 
