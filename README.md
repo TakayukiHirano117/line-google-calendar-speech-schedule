@@ -18,6 +18,9 @@ QRコード
 
 ![LINE QRコード](./src/assets/images/qr/M_gainfriends_2dbarcodes_GW.png)
 
+### 利用規約・プライバシーポリシーなど
+https://github.com/TakayukiHirano117/line-gas-schedule-lp
+
 ## 構成
 擬似オニオンアーキテクチャです。
 
