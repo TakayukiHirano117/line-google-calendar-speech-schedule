@@ -603,6 +603,12 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
   var formatDateKey = (date) => {
     return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
   };
+  var buildTodayCalendarUrl = () => {
+    return "https://calendar.google.com/calendar/r/day";
+  };
+  var buildWeekCalendarUrl = () => {
+    return "https://calendar.google.com/calendar/r/week";
+  };
 
   // src/constants/message.ts
   var MESSAGE = {
@@ -839,11 +845,22 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
           layout: "vertical",
           contents: [
             {
+              type: "button",
+              action: {
+                type: "uri",
+                label: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3067\u78BA\u8A8D",
+                uri: buildTodayCalendarUrl() + "?openExternalBrowser=1"
+              },
+              style: "link",
+              height: "sm"
+            },
+            {
               type: "text",
               text: `${events.length}\u4EF6\u306E\u4E88\u5B9A`,
               size: "sm",
               color: CONFIG.COLORS.TEXT_SECONDARY,
-              align: "center"
+              align: "center",
+              margin: "sm"
             }
           ],
           paddingAll: "md"
@@ -948,11 +965,22 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
           layout: "vertical",
           contents: [
             {
+              type: "button",
+              action: {
+                type: "uri",
+                label: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3067\u78BA\u8A8D",
+                uri: buildWeekCalendarUrl() + "?openExternalBrowser=1"
+              },
+              style: "link",
+              height: "sm"
+            },
+            {
               type: "text",
               text: `\u5408\u8A08 ${totalEvents}\u4EF6\u306E\u4E88\u5B9A`,
               size: "sm",
               color: CONFIG.COLORS.TEXT_SECONDARY,
-              align: "center"
+              align: "center",
+              margin: "sm"
             }
           ],
           paddingAll: "md"
@@ -968,7 +996,17 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     const dateText = `${month}/${day}\uFF08${dayOfWeek}\uFF09`;
     const eventCount = events.length;
     const countText = eventCount === 0 ? "\u2212" : `${eventCount}\u4EF6`;
-    const eventSummary = eventCount === 0 ? "\u4E88\u5B9A\u306A\u3057" : events.slice(0, 2).map((e) => e.title).join(", ").substring(0, 20) + (events.slice(0, 2).map((e) => e.title).join(", ").length > 20 || eventCount > 2 ? "..." : "");
+    let eventSummary = "\u4E88\u5B9A\u306A\u3057";
+    if (eventCount > 0) {
+      const summaryText = events.slice(0, 2).map((e) => e.title).join(", ");
+      if (summaryText.length > 50) {
+        eventSummary = summaryText.substring(0, 50) + "...";
+      } else if (eventCount > 2) {
+        eventSummary = summaryText + "...";
+      } else {
+        eventSummary = summaryText;
+      }
+    }
     const backgroundColor = isToday ? "#E8F5E9" : "#F8F8F8";
     const dateColor = isToday ? CONFIG.COLORS.PRIMARY : CONFIG.COLORS.TEXT_PRIMARY;
     return {
@@ -997,7 +1035,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
           text: eventSummary,
           size: "xs",
           color: CONFIG.COLORS.TEXT_SECONDARY,
-          wrap: false,
+          wrap: true,
           margin: "md",
           flex: 1
         }

@@ -230,3 +230,19 @@ export const buildUserCalendarEventUrl = (eventId: string): string => {
 export const formatDateKey = (date: Date): string => {
   return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 };
+
+/**
+ * 今日のGoogleカレンダーURLを構築
+ * @returns カレンダーURL
+ */
+export const buildTodayCalendarUrl = (): string => {
+  return 'https://calendar.google.com/calendar/r/day';
+};
+
+/**
+ * 週間ビューのGoogleカレンダーURLを構築
+ * @returns カレンダーURL
+ */
+export const buildWeekCalendarUrl = (): string => {
+  return 'https://calendar.google.com/calendar/r/week';
+};

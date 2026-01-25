@@ -1,5 +1,6 @@
 import { CONFIG } from '../../config/index';
 import { MESSAGE } from '../../constants/message';
+import { buildWeekCalendarUrl, buildTodayCalendarUrl } from '../google/userCalendarApi';
 
 /**
  * イベント作成完了のFlexメッセージを構築
@@ -193,11 +194,22 @@ export const buildTodayEventsFlexMessage = (events) => {
         layout: 'vertical',
         contents: [
           {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'カレンダーで確認',
+              uri: buildTodayCalendarUrl() + '?openExternalBrowser=1',
+            },
+            style: 'link',
+            height: 'sm',
+          },
+          {
             type: 'text',
             text: `${events.length}件の予定`,
             size: 'sm',
             color: CONFIG.COLORS.TEXT_SECONDARY,
             align: 'center',
+            margin: 'sm',
           },
         ],
         paddingAll: 'md',
@@ -322,11 +334,22 @@ export const buildWeekEventsFlexMessage = (eventsByDate) => {
         layout: 'vertical',
         contents: [
           {
+            type: 'button',
+            action: {
+              type: 'uri',
+              label: 'カレンダーで確認',
+              uri: buildWeekCalendarUrl() + '?openExternalBrowser=1',
+            },
+            style: 'link',
+            height: 'sm',
+          },
+          {
             type: 'text',
             text: `合計 ${totalEvents}件の予定`,
             size: 'sm',
             color: CONFIG.COLORS.TEXT_SECONDARY,
             align: 'center',
+            margin: 'sm',
           },
         ],
         paddingAll: 'md',
@@ -351,9 +374,19 @@ export const buildDayRowContent = (date, events, isToday) => {
 
   const eventCount = events.length;
   const countText = eventCount === 0 ? '−' : `${eventCount}件`;
-  const eventSummary = eventCount === 0
-    ? '予定なし'
-    : events.slice(0, 2).map(e => e.title).join(', ').substring(0, 20) + (events.slice(0, 2).map(e => e.title).join(', ').length > 20 || eventCount > 2 ? '...' : '');
+  
+  // 予定サマリーを構築（最大2件まで表示、文字数制限を50文字に拡張）
+  let eventSummary = '予定なし';
+  if (eventCount > 0) {
+    const summaryText = events.slice(0, 2).map(e => e.title).join(', ');
+    if (summaryText.length > 50) {
+      eventSummary = summaryText.substring(0, 50) + '...';
+    } else if (eventCount > 2) {
+      eventSummary = summaryText + '...';
+    } else {
+      eventSummary = summaryText;
+    }
+  }
 
   const backgroundColor = isToday ? '#E8F5E9' : '#F8F8F8';
   const dateColor = isToday ? CONFIG.COLORS.PRIMARY : CONFIG.COLORS.TEXT_PRIMARY;
@@ -384,7 +417,7 @@ export const buildDayRowContent = (date, events, isToday) => {
         text: eventSummary,
         size: 'xs',
         color: CONFIG.COLORS.TEXT_SECONDARY,
-        wrap: false,
+        wrap: true,
         margin: 'md',
         flex: 1,
       },
