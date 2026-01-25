@@ -508,7 +508,7 @@ export const buildHelpFlexMessage = () => {
   });
 
   return {
-    altText: 'Voicalの使い方',
+    altText: 'ぶいつーの使い方',
     contents: {
       type: 'bubble',
       size: 'mega',

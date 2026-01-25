@@ -12,7 +12,7 @@ export const MESSAGE = {
   NO_EVENTS_TODAY: '今日の予定はありません',
   NO_EVENTS_WEEK: '今週の予定はありません',
   HELP: {
-    TITLE: 'Voice Calendarの使い方',
+    TITLE: 'ぶいつーの使い方',
     SECTIONS: [
       {
         title: '予定を登録する',
