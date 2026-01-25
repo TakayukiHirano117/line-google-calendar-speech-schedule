@@ -595,11 +595,10 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     }
   };
   var buildUserCalendarEventUrl = (eventId) => {
-    const cleanEventId = eventId.replace("@google.com", "");
-    return `https://www.google.com/calendar/event?eid=${encodeEventId(cleanEventId)}`;
-  };
-  var encodeEventId = (eventId) => {
-    return Utilities.base64Encode(eventId).replace(/=+$/, "");
+    const cleanEventId = eventId.split("_")[0];
+    const eidString = `${cleanEventId} primary`;
+    const eid = Utilities.base64Encode(eidString).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    return `https://www.google.com/calendar/event?eid=${eid}`;
   };
   var formatDateKey = (date) => {
     return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;

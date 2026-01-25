@@ -91,7 +91,7 @@ export const sendLineReplyRequest = (channelAccessToken, requestBody) => {
 
   const response = UrlFetchApp.fetch(CONFIG.LINE_API.REPLY_ENDPOINT, requestOptions);
   const responseCode = response.getResponseCode();
-  
+
   if (responseCode !== 200) {
     Logger.logError('LINE返信', response.getContentText());
   }
