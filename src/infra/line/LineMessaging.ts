@@ -2,14 +2,14 @@ import { CONFIG } from '../../config/index';
 import { CustomLogger } from '../../helper/CustomLogger';
 
 /**
- * LINE Messaging APIサービス
+ * LINE Messaging
  * LINE APIとの通信を担当
  */
-export class LineMessagingService {
+export class LineMessaging {
   /**
    * @param channelAccessToken LINEチャンネルアクセストークン
    */
-  constructor(private readonly channelAccessToken: string) { }
+  constructor(private readonly channelAccessToken: string) {}
 
   /**
    * LINEから音声コンテンツを取得

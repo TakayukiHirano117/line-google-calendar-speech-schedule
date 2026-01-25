@@ -1,10 +1,8 @@
-import { fetchAudioContentFromLine } from '../infra/line/lineMessagingApi';
-import { convertSpeechToText } from '../infra/google/speechToTextApi';
-import { extractCalendarEventFromText } from '../infra/google/geminiApi';
-import { createUserCalendarEvent, buildUserCalendarEventUrl } from '../infra/google/userCalendarApi';
-import { buildEventCreatedFlexMessage, buildReauthRequiredFlexMessage } from '../infra/line/flexMessageFactory';
-import { sendLineFlexReply } from '../infra/line/lineMessagingApi';
-import { sendLineTextReply } from '../infra/line/lineMessagingApi';
+import { LineMessaging } from '../infra/line/LineMessaging';
+import { SpeechToText } from '../infra/google/SpeechToText';
+import { GeminiEventExtractor } from '../infra/google/GeminiEventExtractor';
+import { UserCalendar } from '../infra/google/UserCalendar';
+import { FlexMessageFactory } from '../infra/line/flexMessageFactory';
 import { MESSAGE } from '../constants/message';
 import { OAuth2Manager } from '../infra/google/OAuth2Manager';
 
@@ -13,10 +11,20 @@ import { OAuth2Manager } from '../infra/google/OAuth2Manager';
  */
 export class CreateEventFromVoiceUseCase {
   /**
+   * @param lineMessaging LINE Messaging
+   * @param speechToText Speech-to-Text
+   * @param geminiEventExtractor Gemini イベント抽出
+   * @param userCalendar ユーザーカレンダー
+   * @param flexMessageFactory Flexメッセージファクトリー
    * @param oauth2ClientId OAuth2クライアントID
    * @param oauth2ClientSecret OAuth2クライアントシークレット
    */
   public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText,
+    private readonly geminiEventExtractor: GeminiEventExtractor,
+    private readonly userCalendar: UserCalendar,
+    private readonly flexMessageFactory: FlexMessageFactory,
     private readonly oauth2ClientId: string,
     private readonly oauth2ClientSecret: string
   ) { }
@@ -29,33 +37,33 @@ export class CreateEventFromVoiceUseCase {
    */
   public execute(replyToken: string, messageId: string, userId: string): void {
     // 1. LINE APIから音声を取得
-    const audioBlob = fetchAudioContentFromLine(messageId);
+    const audioBlob = this.lineMessaging.fetchAudioContent(messageId);
     if (!audioBlob) {
-      sendLineTextReply(replyToken, MESSAGE.AUDIO_FETCH_FAILED);
+      this.lineMessaging.sendTextReply(replyToken, MESSAGE.AUDIO_FETCH_FAILED);
       return;
     }
 
     // 2. Speech-to-Textで音声をテキストに変換
-    const transcribedText = convertSpeechToText(audioBlob);
+    const transcribedText = this.speechToText.convertSpeechToText(audioBlob);
     if (!transcribedText) {
-      sendLineTextReply(replyToken, MESSAGE.SPEECH_RECOGNITION_FAILED);
+      this.lineMessaging.sendTextReply(replyToken, MESSAGE.SPEECH_RECOGNITION_FAILED);
       return;
     }
 
     // 3. Gemini APIでイベント情報を抽出
-    const calendarEventData = extractCalendarEventFromText(transcribedText);
+    const calendarEventData = this.geminiEventExtractor.extractCalendarEventFromText(transcribedText);
     if (!calendarEventData) {
-      sendLineTextReply(replyToken, MESSAGE.EVENT_EXTRACTION_FAILED(transcribedText));
+      this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_EXTRACTION_FAILED(transcribedText));
       return;
     }
 
     // 4. ユーザーのGoogleカレンダーにイベントを作成
-    const result = createUserCalendarEvent(userId, calendarEventData);
+    const result = this.userCalendar.createEvent(calendarEventData);
 
     if (result.success && result.eventId) {
-      const eventUrl = buildUserCalendarEventUrl(result.eventId);
-      const flexMessage = buildEventCreatedFlexMessage(calendarEventData, eventUrl);
-      sendLineFlexReply(replyToken, flexMessage);
+      const eventUrl = this.userCalendar.buildEventUrl(result.eventId);
+      const flexMessage = this.flexMessageFactory.buildEventCreatedMessage(calendarEventData, eventUrl);
+      this.lineMessaging.sendFlexReply(replyToken, flexMessage);
     } else if (result.requiresReauth) {
       // 再認証が必要な場合
       const oauth2Manager = new OAuth2Manager(
@@ -64,10 +72,10 @@ export class CreateEventFromVoiceUseCase {
         this.oauth2ClientSecret
       );
       const authUrl = oauth2Manager.getAuthorizationUrl();
-      const flexMessage = buildReauthRequiredFlexMessage(authUrl);
-      sendLineFlexReply(replyToken, flexMessage);
+      const flexMessage = this.flexMessageFactory.buildReauthRequiredMessage(authUrl);
+      this.lineMessaging.sendFlexReply(replyToken, flexMessage);
     } else {
-      sendLineTextReply(replyToken, MESSAGE.CALENDAR_CREATION_FAILED);
+      this.lineMessaging.sendTextReply(replyToken, MESSAGE.CALENDAR_CREATION_FAILED);
     }
   }
 }

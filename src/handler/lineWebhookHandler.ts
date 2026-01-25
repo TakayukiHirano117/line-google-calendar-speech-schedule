@@ -7,8 +7,21 @@ import { ShowLogoutUseCase } from '../usecase/ShowLogoutUseCase';
 import { InvalidRequestUseCase } from '../usecase/InvalidRequestUseCase';
 import { SendAuthRequiredMessageUseCase } from '../usecase/SendAuthRequiredMessageUseCase';
 import { CheckAuthenticationUseCase } from '../usecase/CheckAuthenticationUseCase';
-import { getOAuth2ClientId, getOAuth2ClientSecret } from '../config/getProperty';
+import {
+  getOAuth2ClientId,
+  getOAuth2ClientSecret,
+  getLineChannelAccessToken,
+  getGeminiApiKey,
+  getGcpProjectId
+} from '../config/getProperty';
 import { CustomLogger } from '../helper/CustomLogger';
+import { LineMessaging } from '../infra/line/LineMessaging';
+import { FlexMessageFactory } from '../infra/line/flexMessageFactory';
+import { OAuth2Manager } from '../infra/google/OAuth2Manager';
+import { UserCalendar } from '../infra/google/UserCalendar';
+import { GoogleServiceAccountAuth } from '../infra/google/GoogleServiceAccountAuth';
+import { SpeechToText } from '../infra/google/SpeechToText';
+import { GeminiEventExtractor } from '../infra/google/GeminiEventExtractor';
 
 /**
  * LINEからのWebhookイベントを処理するHandler
@@ -44,29 +57,69 @@ export class LineWebHookHandler {
     const oauth2ClientId = getOAuth2ClientId();
     const oauth2ClientSecret = getOAuth2ClientSecret();
 
-    // 2. 全UseCaseインスタンスを生成
+    // 2. 共通Infraサービスインスタンスを生成
+    const lineChannelAccessToken = getLineChannelAccessToken();
+    const lineMessaging = new LineMessaging(lineChannelAccessToken);
+    const flexMessageFactory = new FlexMessageFactory();
+
+    // 3. Google関連サービスを生成
+    const auth = new GoogleServiceAccountAuth();
+    const geminiApiKey = getGeminiApiKey();
+    const geminiEventExtractor = new GeminiEventExtractor(geminiApiKey);
+    const gcpProjectId = getGcpProjectId();
+    const speechToText = new SpeechToText(auth, gcpProjectId);
+
+    // 4. ユーザーIDを取得（後で使用）
+    const userId = lineEvent.source?.userId || '';
+
+    // 5. OAuth2ManagerとUserCalendarを生成（userId必要）
+    const oauth2Manager = new OAuth2Manager(userId, oauth2ClientId, oauth2ClientSecret);
+    const userCalendar = new UserCalendar(userId, oauth2Manager);
+
+    // 6. 全UseCaseインスタンスを生成
     const checkAuthenticationUseCase = new CheckAuthenticationUseCase(
       oauth2ClientId,
       oauth2ClientSecret
     );
     const createEventFromVoiceUseCase = new CreateEventFromVoiceUseCase(
+      lineMessaging,
+      speechToText,
+      geminiEventExtractor,
+      userCalendar,
+      flexMessageFactory,
       oauth2ClientId,
       oauth2ClientSecret
     );
-    const showHelpUseCase = new ShowHelpUseCase();
-    const showWeekScheduleUseCase = new ShowWeekScheduleUseCase();
-    const showTodayScheduleUseCase = new ShowTodayScheduleUseCase();
+    const showHelpUseCase = new ShowHelpUseCase(
+      lineMessaging,
+      flexMessageFactory
+    );
+    const showWeekScheduleUseCase = new ShowWeekScheduleUseCase(
+      userCalendar,
+      lineMessaging,
+      flexMessageFactory
+    );
+    const showTodayScheduleUseCase = new ShowTodayScheduleUseCase(
+      userCalendar,
+      lineMessaging,
+      flexMessageFactory
+    );
     const showLogoutUseCase = new ShowLogoutUseCase(
       oauth2ClientId,
-      oauth2ClientSecret
+      oauth2ClientSecret,
+      lineMessaging
     );
-    const invalidRequestUseCase = new InvalidRequestUseCase();
+    const invalidRequestUseCase = new InvalidRequestUseCase(
+      lineMessaging
+    );
     const sendAuthRequiredMessageUseCase = new SendAuthRequiredMessageUseCase(
       oauth2ClientId,
-      oauth2ClientSecret
+      oauth2ClientSecret,
+      lineMessaging,
+      flexMessageFactory
     );
 
-    // 3. LineWebHookHandlerインスタンス作成
+    // 7. LineWebHookHandlerインスタンス作成
     const handler = new LineWebHookHandler(
       checkAuthenticationUseCase,
       createEventFromVoiceUseCase,
@@ -78,7 +131,7 @@ export class LineWebHookHandler {
       sendAuthRequiredMessageUseCase
     );
 
-    // 4. イベント処理実行
+    // 8. イベント処理実行
     handler.handleEvent(lineEvent);
   }
 
@@ -143,9 +196,9 @@ export class LineWebHookHandler {
     if (this.isHelpCommand(normalizedText)) {
       this.showHelpUseCase.execute(replyToken);
     } else if (this.isWeekCommand(normalizedText)) {
-      this.showWeekScheduleUseCase.execute(replyToken, userId);
+      this.showWeekScheduleUseCase.execute(replyToken);
     } else if (this.isTodayCommand(normalizedText)) {
-      this.showTodayScheduleUseCase.execute(replyToken, userId);
+      this.showTodayScheduleUseCase.execute(replyToken);
     } else if (this.isLogoutCommand(normalizedText)) {
       this.showLogoutUseCase.execute(replyToken, userId);
     } else {
@@ -169,10 +222,10 @@ export class LineWebHookHandler {
         this.showLogoutUseCase.execute(replyToken, userId);
         break;
       case 'today':
-        this.showTodayScheduleUseCase.execute(replyToken, userId);
+        this.showTodayScheduleUseCase.execute(replyToken);
         break;
       case 'week':
-        this.showWeekScheduleUseCase.execute(replyToken, userId);
+        this.showWeekScheduleUseCase.execute(replyToken);
         break;
       case 'help':
         this.showHelpUseCase.execute(replyToken);
