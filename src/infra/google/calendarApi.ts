@@ -1,5 +1,4 @@
-import { logDebug } from '../../handler/lineWebhookHandler';
-import { logError } from '../../handler/lineWebhookHandler';
+import { Logger } from '../../Logger';
 
 /**
  * Googleカレンダーにイベントを作成
@@ -19,12 +18,12 @@ export const createGoogleCalendarEvent = (eventData) => {
     const createdEvent = calendar.createEvent(eventData.title, startTime, endTime, eventOptions);
     const eventId = createdEvent.getId();
 
-    logDebug('カレンダーイベント作成成功', eventData.title);
-    logDebug('イベントID', eventId);
+    Logger.logDebug('カレンダーイベント作成成功', eventData.title);
+    Logger.logDebug('イベントID', eventId);
 
     return eventId;
   } catch (error) {
-    logError('カレンダーイベント作成', error);
+    Logger.logError('カレンダーイベント作成', error);
     return null;
   }
 };

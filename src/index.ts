@@ -1,4 +1,4 @@
-import { processLineEvent } from './handler/lineWebhookHandler';
+import { LineWebHookHandler } from './handler/lineWebhookHandler';
 import { OAuthCallbackHandler } from './handler/oauthCallbackHandler';
 import { OAuth2Manager } from './infra/google/OAuth2Manager';
 import { getOAuth2ClientId, getOAuth2ClientSecret } from './config/getProperty';
@@ -14,7 +14,7 @@ export function doPost(e: GoogleAppsScript.Events.DoPost): GoogleAppsScript.Cont
   }
 
   const lineEvent = requestBody.events[0];
-  processLineEvent(lineEvent);
+  LineWebHookHandler.processLineEvent(lineEvent);
 
   return createJsonResponse({ status: 'ok' });
 }
