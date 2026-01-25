@@ -1,0 +1,62 @@
+# ぶいつー - プロジェクト概要
+
+## プロジェクト名
+ぶいつー（LINE Calendar Schedule App）
+
+## 概要
+LINEに音声メッセージを送るだけでGoogleカレンダーに予定を追加できるLINE BOT。
+音声をAIが解析し、日時・タイトルを抽出してカレンダーに自動登録する。
+
+## 主な機能
+- 音声メッセージからの予定登録（Speech-to-Text + Gemini）
+- 今日の予定確認
+- 今週の予定確認
+- ヘルプ表示
+- ログアウト（Googleアカウント連携解除）
+
+## 技術スタック
+- **ランタイム**: Google Apps Script (GAS)
+- **言語**: TypeScript
+- **ビルド**: esbuild + clasp
+- **LINE連携**: LINE Messaging API
+- **カレンダー**: Google Calendar API v3
+- **音声認識**: Google Cloud Speech-to-Text API v2
+- **AI解析**: Gemini 2.5 Flash Lite
+- **認証**: OAuth2 for Apps Script ライブラリ
+
+## ディレクトリ構造
+```
+src/
+├── main.ts                 # GASエントリーポイント（global関数定義）
+├── index.ts                # doPost, doGet, authCallback
+├── handler/                # リクエスト受付・レスポンス返却
+├── usecase/                # ビジネスロジック
+├── infra/                  # 外部API連携
+│   ├── google/             # Google系API（Calendar, Speech-to-Text, Gemini, OAuth2）
+│   └── line/               # LINE Messaging API
+├── config/                 # 設定定数
+├── constants/              # メッセージ定数
+└── view/                   # OAuth認証画面（HTML）
+```
+
+## 処理フロー（音声予定登録）
+1. LINEで音声メッセージ送信
+2. doPost（Webhook受信）
+3. lineWebhookHandler（イベント振り分け）
+4. CreateEventFromVoiceUseCase
+   - LINE API: 音声ファイル取得
+   - Speech-to-Text: 音声→テキスト変換
+   - Gemini: テキスト→イベント情報抽出
+   - Calendar API: 予定登録
+5. LINEに結果を返信
+
+## 開発コマンド
+```bash
+npm run build   # TypeScript → JavaScript（esbuild）
+npm run push    # GASにプッシュ（clasp）
+npm run deploy  # build + push
+```
+
+## 現在の状況
+- Googleの審査中（一般公開待ち）
+- 今後: 個人カレンダー選択機能、Outlook対応版（別リポジトリ）

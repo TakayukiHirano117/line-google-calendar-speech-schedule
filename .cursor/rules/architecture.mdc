@@ -1,0 +1,121 @@
+# アーキテクチャ設計
+
+## 概要
+オニオンアーキテクチャを採用。全ての処理はクラスベースで実装する。
+
+> **注意**: 現在 `lineWebhookHandler` 以下は関数型で実装されているが、今後オニオンアーキテクチャ & クラスベースに全て書き換え予定。
+
+## 層構成
+
+```
+┌─────────────────────────────────────────┐
+│              Handler層                   │
+│   リクエスト受付・レスポンス返却          │
+└─────────────────┬───────────────────────┘
+                  │ 呼び出し
+                  ▼
+┌─────────────────────────────────────────┐
+│              UseCase層                   │
+│   ビジネスロジック・ユースケース定義      │
+└─────────────────┬───────────────────────┘
+                  │ 呼び出し
+                  ▼
+┌─────────────────────────────────────────┐
+│              Infra層                     │
+│   外部API連携・技術的責務                │
+└─────────────────────────────────────────┘
+
+        ↓ 全層から参照可能 ↓
+┌─────────────────────────────────────────┐
+│        Config / Constants               │
+│   設定値・メッセージ定数                 │
+└─────────────────────────────────────────┘
+```
+
+## 各層の責務
+
+### Handler層 (`src/handler/`)
+- リクエストの受け取り
+- レスポンスの返却
+- UseCaseの呼び出し
+- `lineWebhookHandler`: Strategyパターンでイベントタイプに応じたUseCaseを呼び出す
+
+### UseCase層 (`src/usecase/`)
+- ユースケース（ビジネスロジック）を定義
+- Infra層のクラスを呼び出して処理を実行
+- 1ユースケース = 1クラス
+
+### Infra層 (`src/infra/`)
+- 外部APIとの通信
+- 技術的な責務を担当
+- UseCaseからのみ呼び出される
+
+| ディレクトリ | 責務 |
+|-------------|------|
+| `infra/google/` | Google系API（Calendar, Speech-to-Text, Gemini, OAuth2） |
+| `infra/line/` | LINE Messaging API |
+
+### Config / Constants
+- `config/`: アプリケーション設定（APIエンドポイント、モデル設定など）
+- `constants/`: ユーザー向けメッセージ定数
+
+## エントリーポイント
+
+### main.ts
+GASのglobal関数を定義。`index.ts`の関数をglobalに公開する。
+
+```typescript
+// main.ts
+global.doPost = doPost;
+global.doGet = doGet;
+global.authCallback = authCallback;
+```
+
+### index.ts
+GASの予約済み関数（doPost, doGet）を実装し、Handlerクラスを呼び出す。
+
+## 依存関係のルール
+
+```
+Handler → UseCase → Infra
+   ↓         ↓        ↓
+   └─────────┴────────┴─→ Config / Constants
+```
+
+- **Handler**: UseCaseのみ呼び出し可能
+- **UseCase**: Infraのみ呼び出し可能
+- **Infra**: 他の層を呼び出さない（外部APIのみ）
+- **Config/Constants**: 全層から参照可能
+
+## クラス設計方針
+
+### 命名規則
+- Handler: `XxxHandler`
+- UseCase: `XxxUseCase`
+- Infra: 機能に応じた名前（`OAuth2Manager`, `GeminiApi`, `LineMessagingApi` など）
+
+### DI（依存性注入）
+UseCaseはコンストラクタでInfraのインスタンスを受け取る。
+
+```typescript
+// 例: CreateEventFromVoiceUseCase
+class CreateEventFromVoiceUseCase {
+  constructor(
+    private readonly lineApi: LineMessagingApi,
+    private readonly speechToTextApi: SpeechToTextApi,
+    private readonly geminiApi: GeminiApi,
+    private readonly calendarApi: UserCalendarApi
+  ) {}
+
+  execute(replyToken: string, messageId: string): void {
+    // ...
+  }
+}
+```
+
+## 今後のリファクタリング方針
+
+1. **関数 → クラス化**: 現在の関数ベース実装をクラスベースに移行
+2. **DI導入**: UseCase ← Infra の依存関係をコンストラクタ注入に統一
+3. **インターフェース定義**: Infra層のインターフェースを定義し、テスタビリティ向上
+4. **Domain層追加**: 必要に応じてドメインオブジェクトを導入（現状は永続化不要のため省略）
