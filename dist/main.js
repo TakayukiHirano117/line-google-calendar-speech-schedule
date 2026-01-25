@@ -79,6 +79,26 @@ function authCallback() {}
     return getScriptProperty("OAUTH2_CLIENT_SECRET");
   };
 
+  // src/Logger.ts
+  var Logger2 = class {
+    /**
+     * デバッグログを出力
+     * @param context - コンテキスト
+     * @param message - メッセージ
+     */
+    static logDebug(context, message) {
+      console.log(`${context}: ${message}`);
+    }
+    /**
+     * エラーログを出力
+     * @param context - コンテキスト
+     * @param error - エラー
+     */
+    static logError(context, error) {
+      console.log(`${context}\u30A8\u30E9\u30FC: ${error}`);
+    }
+  };
+
   // src/infra/line/lineMessagingApi.ts
   var fetchAudioContentFromLine = (messageId) => {
     const channelAccessToken = getLineChannelAccessToken();
@@ -94,7 +114,7 @@ function authCallback() {}
       const response = UrlFetchApp.fetch(contentUrl, requestOptions);
       return response.getBlob();
     } catch (error) {
-      logError("LINE\u97F3\u58F0\u30B3\u30F3\u30C6\u30F3\u30C4\u53D6\u5F97", error);
+      Logger2.logError("LINE\u97F3\u58F0\u30B3\u30F3\u30C6\u30F3\u30C4\u53D6\u5F97", error);
       return null;
     }
   };
@@ -139,7 +159,7 @@ function authCallback() {}
     const response = UrlFetchApp.fetch(CONFIG.LINE_API.REPLY_ENDPOINT, requestOptions);
     const responseCode = response.getResponseCode();
     if (responseCode !== 200) {
-      logError("LINE\u8FD4\u4FE1", response.getContentText());
+      Logger2.logError("LINE\u8FD4\u4FE1", response.getContentText());
     }
   };
 
@@ -202,11 +222,11 @@ function authCallback() {}
     try {
       const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
       const responseData = JSON.parse(response.getContentText());
-      logDebug("Speech-to-Text v2 \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
-      logDebug("Speech-to-Text v2 \u7D50\u679C", JSON.stringify(responseData));
+      Logger2.logDebug("Speech-to-Text v2 \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
+      Logger2.logDebug("Speech-to-Text v2 \u7D50\u679C", JSON.stringify(responseData));
       return extractTranscriptFromSpeechResponse(responseData);
     } catch (error) {
-      logError("Speech-to-Text v2", error);
+      Logger2.logError("Speech-to-Text v2", error);
       return null;
     }
   };
@@ -262,11 +282,11 @@ function authCallback() {}
     try {
       const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
       const responseData = JSON.parse(response.getContentText());
-      logDebug("Gemini \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
-      logDebug("Gemini \u7D50\u679C", JSON.stringify(responseData));
+      Logger2.logDebug("Gemini \u30B9\u30C6\u30FC\u30BF\u30B9", response.getResponseCode());
+      Logger2.logDebug("Gemini \u7D50\u679C", JSON.stringify(responseData));
       return parseGeminiResponseToEventData(responseData);
     } catch (error) {
-      logError("Gemini API", error);
+      Logger2.logError("Gemini API", error);
       return null;
     }
   };
@@ -340,11 +360,11 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         return null;
       }
       const jsonString = extractJsonFromText(generatedText);
-      logDebug("\u62BD\u51FA\u3055\u308C\u305FJSON", jsonString);
+      Logger2.logDebug("\u62BD\u51FA\u3055\u308C\u305FJSON", jsonString);
       const eventData = JSON.parse(jsonString);
       return isValidEventData(eventData) ? eventData : null;
     } catch (error) {
-      logError("Gemini \u30EC\u30B9\u30DD\u30F3\u30B9\u89E3\u6790", error);
+      Logger2.logError("Gemini \u30EC\u30B9\u30DD\u30F3\u30B9\u89E3\u6790", error);
       return null;
     }
   };
@@ -442,7 +462,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return { success: false, error: "NO_TOKEN", requiresReauth: true };
     }
     const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events`;
@@ -474,7 +494,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         case 200:
         case 201: {
           const result = JSON.parse(response.getContentText());
-          logDebug("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210\u6210\u529F", result.id);
+          Logger2.logDebug("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210\u6210\u529F", result.id);
           return { success: true, eventId: result.id };
         }
         case 401:
@@ -485,11 +505,11 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         case 429:
           return { success: false, error: "RATE_LIMITED", requiresReauth: false };
         default:
-          logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", response.getContentText());
+          Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", response.getContentText());
           return { success: false, error: "API_ERROR", requiresReauth: false };
       }
     } catch (error) {
-      logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", error);
+      Logger2.logError("\u30AB\u30EC\u30F3\u30C0\u30FC\u30A4\u30D9\u30F3\u30C8\u4F5C\u6210", error);
       return { success: false, error: String(error), requiresReauth: false };
     }
   };
@@ -501,7 +521,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      logError("\u4ECA\u65E5\u306E\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      Logger2.logError("\u4ECA\u65E5\u306E\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return [];
     }
     const today = /* @__PURE__ */ new Date();
@@ -517,7 +537,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
     );
     const accessToken = oauth2Service.getAccessToken();
     if (!accessToken) {
-      logError("\u9031\u9593\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+      Logger2.logError("\u9031\u9593\u4E88\u5B9A\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
       return {};
     }
     const today = /* @__PURE__ */ new Date();
@@ -558,7 +578,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       const response = UrlFetchApp.fetch(`${endpoint}?${params}`, options);
       const responseCode = response.getResponseCode();
       if (responseCode !== 200) {
-        logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", response.getContentText());
+        Logger2.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", response.getContentText());
         return [];
       }
       const result = JSON.parse(response.getContentText());
@@ -570,7 +590,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         isAllDay: !item.start.dateTime
       }));
     } catch (error) {
-      logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", error);
+      Logger2.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", error);
       return [];
     }
   };
@@ -1253,188 +1273,396 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
   };
 
   // src/usecase/CreateEventFromVoiceUseCase.ts
-  var createEventFromVoice = (replyToken, messageId, userId) => {
-    const audioBlob = fetchAudioContentFromLine(messageId);
-    if (!audioBlob) {
-      sendLineTextReply(replyToken, MESSAGE.AUDIO_FETCH_FAILED);
-      return;
+  var CreateEventFromVoiceUseCase = class {
+    /**
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     */
+    constructor(oauth2ClientId, oauth2ClientSecret) {
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
     }
-    const transcribedText = convertSpeechToText(audioBlob);
-    if (!transcribedText) {
-      sendLineTextReply(replyToken, MESSAGE.SPEECH_RECOGNITION_FAILED);
-      return;
-    }
-    const calendarEventData = extractCalendarEventFromText(transcribedText);
-    if (!calendarEventData) {
-      sendLineTextReply(replyToken, MESSAGE.EVENT_EXTRACTION_FAILED(transcribedText));
-      return;
-    }
-    const result = createUserCalendarEvent(userId, calendarEventData);
-    if (result.success && result.eventId) {
-      const eventUrl = buildUserCalendarEventUrl(result.eventId);
-      const flexMessage = buildEventCreatedFlexMessage(calendarEventData, eventUrl);
-      sendLineFlexReply(replyToken, flexMessage);
-    } else if (result.requiresReauth) {
-      const oauth2Service = new OAuth2Manager(
-        userId,
-        getOAuth2ClientId(),
-        getOAuth2ClientSecret()
-      );
-      const authUrl = oauth2Service.getAuthorizationUrl();
-      const flexMessage = buildReauthRequiredFlexMessage(authUrl);
-      sendLineFlexReply(replyToken, flexMessage);
-    } else {
-      sendLineTextReply(replyToken, MESSAGE.CALENDAR_CREATION_FAILED);
+    /**
+     * 音声メッセージからカレンダーイベントを作成
+     * @param replyToken LINEリプライトークン
+     * @param messageId LINEメッセージID
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, messageId, userId) {
+      const audioBlob = fetchAudioContentFromLine(messageId);
+      if (!audioBlob) {
+        sendLineTextReply(replyToken, MESSAGE.AUDIO_FETCH_FAILED);
+        return;
+      }
+      const transcribedText = convertSpeechToText(audioBlob);
+      if (!transcribedText) {
+        sendLineTextReply(replyToken, MESSAGE.SPEECH_RECOGNITION_FAILED);
+        return;
+      }
+      const calendarEventData = extractCalendarEventFromText(transcribedText);
+      if (!calendarEventData) {
+        sendLineTextReply(replyToken, MESSAGE.EVENT_EXTRACTION_FAILED(transcribedText));
+        return;
+      }
+      const result = createUserCalendarEvent(userId, calendarEventData);
+      if (result.success && result.eventId) {
+        const eventUrl = buildUserCalendarEventUrl(result.eventId);
+        const flexMessage = buildEventCreatedFlexMessage(calendarEventData, eventUrl);
+        sendLineFlexReply(replyToken, flexMessage);
+      } else if (result.requiresReauth) {
+        const oauth2Manager = new OAuth2Manager(
+          userId,
+          this.oauth2ClientId,
+          this.oauth2ClientSecret
+        );
+        const authUrl = oauth2Manager.getAuthorizationUrl();
+        const flexMessage = buildReauthRequiredFlexMessage(authUrl);
+        sendLineFlexReply(replyToken, flexMessage);
+      } else {
+        sendLineTextReply(replyToken, MESSAGE.CALENDAR_CREATION_FAILED);
+      }
     }
   };
 
   // src/usecase/ShowHelpUseCase.ts
-  var showHelp = (replyToken) => {
-    const flexMessage = buildHelpFlexMessage();
-    sendLineFlexReply(replyToken, flexMessage);
+  var ShowHelpUseCase = class {
+    /**
+     * ヘルプメッセージを表示
+     * @param replyToken LINEリプライトークン
+     */
+    execute(replyToken) {
+      const flexMessage = buildHelpFlexMessage();
+      sendLineFlexReply(replyToken, flexMessage);
+    }
   };
 
   // src/usecase/ShowWeekScheduleUseCase.ts
-  var showWeekSchedule = (replyToken, userId) => {
-    const weekEvents = getUserWeekEvents(userId);
-    const flexMessage = buildWeekEventsFlexMessage(weekEvents);
-    sendLineFlexReply(replyToken, flexMessage);
+  var ShowWeekScheduleUseCase = class {
+    /**
+     * 週間予定を表示（直近7日間）
+     * @param replyToken LINEリプライトークン
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, userId) {
+      const weekEvents = getUserWeekEvents(userId);
+      const flexMessage = buildWeekEventsFlexMessage(weekEvents);
+      sendLineFlexReply(replyToken, flexMessage);
+    }
   };
 
   // src/usecase/ShowTodayScheduleUseCase.ts
-  var showTodaySchedule = (replyToken, userId) => {
-    const todayEvents = getUserTodayEvents(userId);
-    const flexMessage = buildTodayEventsFlexMessage(todayEvents);
-    sendLineFlexReply(replyToken, flexMessage);
+  var ShowTodayScheduleUseCase = class {
+    /**
+     * 今日の予定を表示
+     * @param replyToken LINEリプライトークン
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, userId) {
+      const todayEvents = getUserTodayEvents(userId);
+      const flexMessage = buildTodayEventsFlexMessage(todayEvents);
+      sendLineFlexReply(replyToken, flexMessage);
+    }
   };
 
   // src/usecase/ShowLogoutUseCase.ts
-  var showLogout = (replyToken, userId) => {
-    const oauth2Service = new OAuth2Manager(
-      userId,
-      getOAuth2ClientId(),
-      getOAuth2ClientSecret()
-    );
-    oauth2Service.revokeToken();
-    sendLineTextReply(replyToken, "\u30ED\u30B0\u30A2\u30A6\u30C8\u3057\u307E\u3057\u305F\u3002\n\u518D\u5EA6\u5229\u7528\u3059\u308B\u5834\u5408\u306F\u3001\u8A8D\u8A3C\u304C\u5FC5\u8981\u3067\u3059\u3002");
+  var ShowLogoutUseCase = class {
+    /**
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     */
+    constructor(oauth2ClientId, oauth2ClientSecret) {
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
+    }
+    /**
+     * ログアウト処理を実行
+     * @param replyToken LINEリプライトークン
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, userId) {
+      const oauth2Manager = new OAuth2Manager(
+        userId,
+        this.oauth2ClientId,
+        this.oauth2ClientSecret
+      );
+      oauth2Manager.revokeToken();
+      sendLineTextReply(replyToken, "\u30ED\u30B0\u30A2\u30A6\u30C8\u3057\u307E\u3057\u305F\u3002\n\u518D\u5EA6\u5229\u7528\u3059\u308B\u5834\u5408\u306F\u3001\u8A8D\u8A3C\u304C\u5FC5\u8981\u3067\u3059\u3002");
+    }
   };
 
   // src/usecase/InvalidRequestUseCase.ts
-  var InvalidRequestUseCase = (replyToken) => {
-    sendLineTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+  var InvalidRequestUseCase = class {
+    /**
+     * 不正なリクエストに対するエラーメッセージを送信
+     * @param replyToken LINEリプライトークン
+     */
+    execute(replyToken) {
+      sendLineTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+    }
   };
 
   // src/usecase/SendAuthRequiredMessageUseCase.ts
-  var sendAuthRequiredMessage = (replyToken, userId) => {
-    const oauth2Service = new OAuth2Manager(
-      userId,
-      getOAuth2ClientId(),
-      getOAuth2ClientSecret()
-    );
-    const authUrl = oauth2Service.getAuthorizationUrl(true);
-    const flexMessage = buildAuthRequiredFlexMessage(authUrl);
-    sendLineFlexReply(replyToken, flexMessage);
+  var SendAuthRequiredMessageUseCase = class {
+    /**
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     */
+    constructor(oauth2ClientId, oauth2ClientSecret) {
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
+    }
+    /**
+     * 未認証ユーザーに認証を促すメッセージを送信
+     * @param replyToken リプライトークン
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, userId) {
+      const oauth2Manager = new OAuth2Manager(
+        userId,
+        this.oauth2ClientId,
+        this.oauth2ClientSecret
+      );
+      const authUrl = oauth2Manager.getAuthorizationUrl(true);
+      const flexMessage = buildAuthRequiredFlexMessage(authUrl);
+      sendLineFlexReply(replyToken, flexMessage);
+    }
+  };
+
+  // src/usecase/CheckAuthenticationUseCase.ts
+  var CheckAuthenticationUseCase = class {
+    /**
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     */
+    constructor(oauth2ClientId, oauth2ClientSecret) {
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
+    }
+    /**
+     * ユーザーの認証状態をチェック
+     * @param userId LINEユーザーID
+     * @returns 認証済みの場合true、未認証の場合false
+     */
+    execute(userId) {
+      const oauth2Manager = new OAuth2Manager(
+        userId,
+        this.oauth2ClientId,
+        this.oauth2ClientSecret
+      );
+      return oauth2Manager.hasValidToken();
+    }
   };
 
   // src/handler/lineWebhookHandler.ts
-  var processLineEvent = (lineEvent) => {
-    const replyToken = lineEvent.replyToken;
-    const userId = extractUserId(lineEvent);
-    if (!userId) {
-      logError("processLineEvent", "userId\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F");
-      InvalidRequestUseCase(replyToken);
-      return;
+  var LineWebHookHandler = class _LineWebHookHandler {
+    /**
+     * @param checkAuthenticationUseCase 認証チェックUseCase
+     * @param createEventFromVoiceUseCase 音声からイベント作成UseCase
+     * @param showHelpUseCase ヘルプ表示UseCase
+     * @param showWeekScheduleUseCase 週間予定表示UseCase
+     * @param showTodayScheduleUseCase 今日の予定表示UseCase
+     * @param showLogoutUseCase ログアウトUseCase
+     * @param invalidRequestUseCase 不正リクエスト処理UseCase
+     * @param sendAuthRequiredMessageUseCase 認証要求メッセージ送信UseCase
+     */
+    constructor(checkAuthenticationUseCase, createEventFromVoiceUseCase, showHelpUseCase, showWeekScheduleUseCase, showTodayScheduleUseCase, showLogoutUseCase, invalidRequestUseCase, sendAuthRequiredMessageUseCase) {
+      this.checkAuthenticationUseCase = checkAuthenticationUseCase;
+      this.createEventFromVoiceUseCase = createEventFromVoiceUseCase;
+      this.showHelpUseCase = showHelpUseCase;
+      this.showWeekScheduleUseCase = showWeekScheduleUseCase;
+      this.showTodayScheduleUseCase = showTodayScheduleUseCase;
+      this.showLogoutUseCase = showLogoutUseCase;
+      this.invalidRequestUseCase = invalidRequestUseCase;
+      this.sendAuthRequiredMessageUseCase = sendAuthRequiredMessageUseCase;
     }
-    if (isFollowEvent(lineEvent)) {
-      logDebug("processLineEvent", "follow\u30A4\u30D9\u30F3\u30C8\u3092\u53D7\u4FE1\u3057\u307E\u3057\u305F");
-      return;
+    /**
+     * LINEイベントを処理（index.tsから呼び出されるstaticメソッド）
+     * @param lineEvent LINEイベント
+     */
+    static processLineEvent(lineEvent) {
+      const oauth2ClientId = getOAuth2ClientId();
+      const oauth2ClientSecret = getOAuth2ClientSecret();
+      const checkAuthenticationUseCase = new CheckAuthenticationUseCase(
+        oauth2ClientId,
+        oauth2ClientSecret
+      );
+      const createEventFromVoiceUseCase = new CreateEventFromVoiceUseCase(
+        oauth2ClientId,
+        oauth2ClientSecret
+      );
+      const showHelpUseCase = new ShowHelpUseCase();
+      const showWeekScheduleUseCase = new ShowWeekScheduleUseCase();
+      const showTodayScheduleUseCase = new ShowTodayScheduleUseCase();
+      const showLogoutUseCase = new ShowLogoutUseCase(
+        oauth2ClientId,
+        oauth2ClientSecret
+      );
+      const invalidRequestUseCase = new InvalidRequestUseCase();
+      const sendAuthRequiredMessageUseCase = new SendAuthRequiredMessageUseCase(
+        oauth2ClientId,
+        oauth2ClientSecret
+      );
+      const handler = new _LineWebHookHandler(
+        checkAuthenticationUseCase,
+        createEventFromVoiceUseCase,
+        showHelpUseCase,
+        showWeekScheduleUseCase,
+        showTodayScheduleUseCase,
+        showLogoutUseCase,
+        invalidRequestUseCase,
+        sendAuthRequiredMessageUseCase
+      );
+      handler.handleEvent(lineEvent);
     }
-    const oauth2Service = new OAuth2Manager(
-      userId,
-      getOAuth2ClientId(),
-      getOAuth2ClientSecret()
-    );
-    if (!oauth2Service.hasValidToken()) {
-      sendAuthRequiredMessage(replyToken, userId);
-      return;
+    /**
+     * LINEイベントを処理
+     * @param lineEvent LINEイベント
+     */
+    handleEvent(lineEvent) {
+      const replyToken = lineEvent.replyToken;
+      const userId = this.extractUserId(lineEvent);
+      if (!userId) {
+        Logger2.logError("handleEvent", "userId\u3092\u53D6\u5F97\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F");
+        this.invalidRequestUseCase.execute(replyToken);
+        return;
+      }
+      if (this.isFollowEvent(lineEvent)) {
+        Logger2.logDebug("handleEvent", "follow\u30A4\u30D9\u30F3\u30C8\u3092\u53D7\u4FE1\u3057\u307E\u3057\u305F");
+        return;
+      }
+      if (!this.checkAuthenticationUseCase.execute(userId)) {
+        this.sendAuthRequiredMessageUseCase.execute(replyToken, userId);
+        return;
+      }
+      if (this.isAudioMessage(lineEvent)) {
+        this.createEventFromVoiceUseCase.execute(replyToken, lineEvent.message.id, userId);
+      } else if (this.isTextMessage(lineEvent)) {
+        this.processTextMessage(replyToken, lineEvent.message.text, userId);
+      } else if (this.isPostbackEvent(lineEvent)) {
+        this.processPostbackEvent(replyToken, lineEvent.postback.data, userId);
+      } else {
+        this.invalidRequestUseCase.execute(replyToken);
+      }
     }
-    if (isAudioMessage(lineEvent)) {
-      createEventFromVoice(replyToken, lineEvent.message.id, userId);
-    } else if (isTextMessage(lineEvent)) {
-      processTextMessage(replyToken, lineEvent.message.text, userId);
-    } else if (isPostbackEvent(lineEvent)) {
-      processPostbackEvent(replyToken, lineEvent.postback.data, userId);
-    } else {
-      InvalidRequestUseCase(replyToken);
+    /**
+     * LINEイベントからuserIdを抽出
+     * @param lineEvent LINEイベント
+     * @returns userId または undefined
+     */
+    extractUserId(lineEvent) {
+      var _a;
+      return (_a = lineEvent.source) == null ? void 0 : _a.userId;
     }
-  };
-  var extractUserId = (lineEvent) => {
-    var _a;
-    return (_a = lineEvent.source) == null ? void 0 : _a.userId;
-  };
-  var processTextMessage = (replyToken, messageText, userId) => {
-    const normalizedText = messageText.trim();
-    if (isHelpCommand(normalizedText)) {
-      showHelp(replyToken);
-    } else if (isWeekCommand(normalizedText)) {
-      showWeekSchedule(replyToken, userId);
-    } else if (isTodayCommand(normalizedText)) {
-      showTodaySchedule(replyToken, userId);
-    } else if (isLogoutCommand(normalizedText)) {
-      showLogout(replyToken, userId);
-    } else {
-      InvalidRequestUseCase(replyToken);
+    /**
+     * テキストメッセージを処理
+     * @param replyToken リプライトークン
+     * @param messageText メッセージテキスト
+     * @param userId LINEユーザーID
+     */
+    processTextMessage(replyToken, messageText, userId) {
+      const normalizedText = messageText.trim();
+      if (this.isHelpCommand(normalizedText)) {
+        this.showHelpUseCase.execute(replyToken);
+      } else if (this.isWeekCommand(normalizedText)) {
+        this.showWeekScheduleUseCase.execute(replyToken, userId);
+      } else if (this.isTodayCommand(normalizedText)) {
+        this.showTodayScheduleUseCase.execute(replyToken, userId);
+      } else if (this.isLogoutCommand(normalizedText)) {
+        this.showLogoutUseCase.execute(replyToken, userId);
+      } else {
+        this.invalidRequestUseCase.execute(replyToken);
+      }
     }
-  };
-  var isAudioMessage = (lineEvent) => {
-    return lineEvent.type === "message" && lineEvent.message.type === "audio";
-  };
-  var isTextMessage = (lineEvent) => {
-    return lineEvent.type === "message" && lineEvent.message.type === "text";
-  };
-  var isTodayCommand = (text) => {
-    return CONFIG.COMMANDS.TODAY.some((command) => text.includes(command));
-  };
-  var isWeekCommand = (text) => {
-    return CONFIG.COMMANDS.WEEK.some((command) => text.includes(command));
-  };
-  var isHelpCommand = (text) => {
-    return CONFIG.COMMANDS.HELP.some((command) => text.includes(command));
-  };
-  var isLogoutCommand = (text) => {
-    return CONFIG.COMMANDS.LOGOUT.some((command) => text.includes(command));
-  };
-  var isPostbackEvent = (lineEvent) => {
-    return lineEvent.type === "postback" && lineEvent.postback;
-  };
-  var isFollowEvent = (lineEvent) => {
-    return lineEvent.type === "follow";
-  };
-  var processPostbackEvent = (replyToken, postbackData, userId) => {
-    const actionMatch = postbackData.match(/action=([^&]+)/);
-    const action = actionMatch ? actionMatch[1] : null;
-    switch (action) {
-      case "logout":
-        showLogout(replyToken, userId);
-        break;
-      case "today":
-        showTodaySchedule(replyToken, userId);
-        break;
-      case "week":
-        showWeekSchedule(replyToken, userId);
-        break;
-      case "help":
-        showHelp(replyToken);
-        break;
-      default:
-        InvalidRequestUseCase(replyToken);
+    /**
+     * Postbackイベントを処理
+     * @param replyToken リプライトークン
+     * @param postbackData Postbackデータ
+     * @param userId LINEユーザーID
+     */
+    processPostbackEvent(replyToken, postbackData, userId) {
+      const actionMatch = postbackData.match(/action=([^&]+)/);
+      const action = actionMatch ? actionMatch[1] : null;
+      switch (action) {
+        case "logout":
+          this.showLogoutUseCase.execute(replyToken, userId);
+          break;
+        case "today":
+          this.showTodayScheduleUseCase.execute(replyToken, userId);
+          break;
+        case "week":
+          this.showWeekScheduleUseCase.execute(replyToken, userId);
+          break;
+        case "help":
+          this.showHelpUseCase.execute(replyToken);
+          break;
+        default:
+          this.invalidRequestUseCase.execute(replyToken);
+      }
     }
-  };
-  var logDebug = (context, message) => {
-    console.log(`${context}: ${message}`);
-  };
-  var logError = (context, error) => {
-    console.log(`${context}\u30A8\u30E9\u30FC: ${error}`);
+    /**
+     * 音声メッセージかチェック
+     * @param lineEvent LINEイベント
+     * @returns 音声メッセージの場合true
+     */
+    isAudioMessage(lineEvent) {
+      return lineEvent.type === "message" && lineEvent.message.type === "audio";
+    }
+    /**
+     * テキストメッセージかチェック
+     * @param lineEvent LINEイベント
+     * @returns テキストメッセージの場合true
+     */
+    isTextMessage(lineEvent) {
+      return lineEvent.type === "message" && lineEvent.message.type === "text";
+    }
+    /**
+     * 今日の予定コマンドかチェック
+     * @param text テキスト
+     * @returns 今日の予定コマンドの場合true
+     */
+    isTodayCommand(text) {
+      return CONFIG.COMMANDS.TODAY.some((command) => text.includes(command));
+    }
+    /**
+     * 週間予定コマンドかチェック
+     * @param text テキスト
+     * @returns 週間予定コマンドの場合true
+     */
+    isWeekCommand(text) {
+      return CONFIG.COMMANDS.WEEK.some((command) => text.includes(command));
+    }
+    /**
+     * ヘルプコマンドかチェック
+     * @param text テキスト
+     * @returns ヘルプコマンドの場合true
+     */
+    isHelpCommand(text) {
+      return CONFIG.COMMANDS.HELP.some((command) => text.includes(command));
+    }
+    /**
+     * ログアウトコマンドかチェック
+     * @param text テキスト
+     * @returns ログアウトコマンドの場合true
+     */
+    isLogoutCommand(text) {
+      return CONFIG.COMMANDS.LOGOUT.some((command) => text.includes(command));
+    }
+    /**
+     * Postbackイベントかチェック
+     * @param lineEvent LINEイベント
+     * @returns Postbackイベントの場合true
+     */
+    isPostbackEvent(lineEvent) {
+      return lineEvent.type === "postback" && lineEvent.postback;
+    }
+    /**
+     * Followイベントかチェック
+     * @param lineEvent LINEイベント
+     * @returns Followイベントの場合true
+     */
+    isFollowEvent(lineEvent) {
+      return lineEvent.type === "follow";
+    }
   };
 
   // src/usecase/HandleOAuthCallbackUseCase.ts
@@ -1701,7 +1929,7 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       return createJsonResponse({ status: "no events" });
     }
     const lineEvent = requestBody.events[0];
-    processLineEvent(lineEvent);
+    LineWebHookHandler.processLineEvent(lineEvent);
     return createJsonResponse({ status: "ok" });
   }
   function doGet(e) {

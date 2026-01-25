@@ -1,6 +1,6 @@
 import { CONFIG } from '../../config/index';
 import { OAuth2Manager } from './OAuth2Manager';
-import { logDebug, logError } from '../../handler/lineWebhookHandler';
+import { Logger } from '../../Logger';
 import { getOAuth2ClientId, getOAuth2ClientSecret } from '../../config/getProperty';
 
 const CALENDAR_API_BASE = CONFIG.CALENDAR_API.BASE_URL;
@@ -23,7 +23,7 @@ export const createUserCalendarEvent = (
   
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
-    logError('カレンダーイベント作成', 'アクセストークンがありません');
+    Logger.logError('カレンダーイベント作成', 'アクセストークンがありません');
     return { success: false, error: 'NO_TOKEN', requiresReauth: true };
   }
 
@@ -60,7 +60,7 @@ export const createUserCalendarEvent = (
       case 200:
       case 201: {
         const result = JSON.parse(response.getContentText());
-        logDebug('カレンダーイベント作成成功', result.id);
+        Logger.logDebug('カレンダーイベント作成成功', result.id);
         return { success: true, eventId: result.id };
       }
       case 401:
@@ -71,11 +71,11 @@ export const createUserCalendarEvent = (
       case 429:
         return { success: false, error: 'RATE_LIMITED', requiresReauth: false };
       default:
-        logError('カレンダーイベント作成', response.getContentText());
+        Logger.logError('カレンダーイベント作成', response.getContentText());
         return { success: false, error: 'API_ERROR', requiresReauth: false };
     }
   } catch (error) {
-    logError('カレンダーイベント作成', error);
+    Logger.logError('カレンダーイベント作成', error);
     return { success: false, error: String(error), requiresReauth: false };
   }
 };
@@ -94,7 +94,7 @@ export const getUserTodayEvents = (userId: string): CalendarEvent[] => {
   
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
-    logError('今日の予定取得', 'アクセストークンがありません');
+    Logger.logError('今日の予定取得', 'アクセストークンがありません');
     return [];
   }
 
@@ -119,7 +119,7 @@ export const getUserWeekEvents = (userId: string): EventsByDate => {
   
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
-    logError('週間予定取得', 'アクセストークンがありません');
+    Logger.logError('週間予定取得', 'アクセストークンがありません');
     return {};
   }
 
@@ -181,7 +181,7 @@ const fetchUserEvents = (
     const responseCode = response.getResponseCode();
 
     if (responseCode !== 200) {
-      logError('イベント取得', response.getContentText());
+      Logger.logError('イベント取得', response.getContentText());
       return [];
     }
 
@@ -194,7 +194,7 @@ const fetchUserEvents = (
       isAllDay: !item.start.dateTime,
     }));
   } catch (error) {
-    logError('イベント取得', error);
+    Logger.logError('イベント取得', error);
     return [];
   }
 };

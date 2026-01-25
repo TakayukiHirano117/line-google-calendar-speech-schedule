@@ -1,6 +1,6 @@
 import { getLineChannelAccessToken } from '../../config/getProperty';
 import { CONFIG } from '../../config/index';
-import { logError } from '../../handler/lineWebhookHandler';
+import { Logger } from '../../Logger';
 
 /**
  * LINEから音声コンテンツを取得
@@ -23,7 +23,7 @@ export const fetchAudioContentFromLine = (messageId) => {
     const response = UrlFetchApp.fetch(contentUrl, requestOptions);
     return response.getBlob();
   } catch (error) {
-    logError('LINE音声コンテンツ取得', error);
+    Logger.logError('LINE音声コンテンツ取得', error);
     return null;
   }
 };
@@ -93,6 +93,6 @@ export const sendLineReplyRequest = (channelAccessToken, requestBody) => {
   const responseCode = response.getResponseCode();
   
   if (responseCode !== 200) {
-    logError('LINE返信', response.getContentText());
+    Logger.logError('LINE返信', response.getContentText());
   }
 };

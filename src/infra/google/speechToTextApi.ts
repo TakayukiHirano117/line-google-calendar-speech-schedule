@@ -1,6 +1,6 @@
 import { getGcpProjectId } from '../../config/getProperty';
 import { generateServiceAccountAccessToken } from './auth';
-import { logDebug, logError } from '../../handler/lineWebhookHandler';
+import { Logger } from '../../Logger';
 import { CONFIG } from '../../config/index';
 
 /**
@@ -23,12 +23,12 @@ export const convertSpeechToText = (audioBlob) => {
     const response = UrlFetchApp.fetch(apiEndpoint, requestOptions);
     const responseData = JSON.parse(response.getContentText());
 
-    logDebug('Speech-to-Text v2 ステータス', response.getResponseCode());
-    logDebug('Speech-to-Text v2 結果', JSON.stringify(responseData));
+    Logger.logDebug('Speech-to-Text v2 ステータス', response.getResponseCode());
+    Logger.logDebug('Speech-to-Text v2 結果', JSON.stringify(responseData));
 
     return extractTranscriptFromSpeechResponse(responseData);
   } catch (error) {
-    logError('Speech-to-Text v2', error);
+    Logger.logError('Speech-to-Text v2', error);
     return null;
   }
 };
