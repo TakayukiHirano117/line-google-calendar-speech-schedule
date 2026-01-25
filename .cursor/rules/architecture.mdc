@@ -3,8 +3,6 @@
 ## 概要
 オニオンアーキテクチャを採用。全ての処理はクラスベースで実装する。
 
-> **注意**: 現在 `lineWebhookHandler` 以下は関数型で実装されているが、今後オニオンアーキテクチャ & クラスベースに全て書き換え予定。
-
 ## 層構成
 
 ```
@@ -50,10 +48,10 @@
 - 技術的な責務を担当
 - UseCaseからのみ呼び出される
 
-| ディレクトリ | 責務 |
-|-------------|------|
+| ディレクトリ    | 責務                                                    |
+| --------------- | ------------------------------------------------------- |
 | `infra/google/` | Google系API（Calendar, Speech-to-Text, Gemini, OAuth2） |
-| `infra/line/` | LINE Messaging API |
+| `infra/line/`   | LINE Messaging API                                      |
 
 ### Config / Constants
 - `config/`: アプリケーション設定（APIエンドポイント、モデル設定など）
@@ -99,23 +97,63 @@ UseCaseはコンストラクタでInfraのインスタンスを受け取る。
 
 ```typescript
 // 例: CreateEventFromVoiceUseCase
-class CreateEventFromVoiceUseCase {
-  constructor(
-    private readonly lineApi: LineMessagingApi,
-    private readonly speechToTextApi: SpeechToTextApi,
-    private readonly geminiApi: GeminiApi,
-    private readonly calendarApi: UserCalendarApi
-  ) {}
+export class CreateEventFromVoiceUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText,
+    private readonly geminiEventExtractor: GeminiEventExtractor,
+    private readonly userCalendar: UserCalendar,
+    private readonly flexMessageFactory: FlexMessageFactory,
+    private readonly oauth2ClientId: string,
+    private readonly oauth2ClientSecret: string
+  ) { }
 
-  execute(replyToken: string, messageId: string): void {
+  public execute(replyToken: string, messageId: string, userId: string): void {
+    // 1. LINE APIから音声を取得
+    const audioBlob = this.lineMessaging.fetchAudioContent(messageId);
+    
+    // 2. Speech-to-Textで音声をテキストに変換
+    const transcribedText = this.speechToText.convertSpeechToText(audioBlob);
+    
+    // 3. Gemini APIでイベント情報を抽出
+    const calendarEventData = this.geminiEventExtractor.extractCalendarEventFromText(transcribedText);
+    
+    // 4. ユーザーのGoogleカレンダーにイベントを作成
+    const result = this.userCalendar.createEvent(calendarEventData);
     // ...
   }
 }
 ```
 
-## 今後のリファクタリング方針
+### クラス実装例（Infra層）
 
-1. **関数 → クラス化**: 現在の関数ベース実装をクラスベースに移行
-2. **DI導入**: UseCase ← Infra の依存関係をコンストラクタ注入に統一
-3. **インターフェース定義**: Infra層のインターフェースを定義し、テスタビリティ向上
-4. **Domain層追加**: 必要に応じてドメインオブジェクトを導入（現状は永続化不要のため省略）
+```typescript
+// 例: LineMessaging
+export class LineMessaging {
+  constructor(private readonly channelAccessToken: string) {}
+
+  public fetchAudioContent(messageId: string): GoogleAppsScript.Base.Blob | null {
+    // LINE APIから音声コンテンツを取得
+  }
+
+  public sendTextReply(replyToken: string, messageText: string): void {
+    // LINEにテキストメッセージを返信
+  }
+
+  public sendFlexReply(replyToken: string, flexContent: any): void {
+    // LINEにFlexメッセージを返信
+  }
+}
+```
+
+## 実装状況
+
+- ✅ クラスベース実装完了
+- ✅ DI（依存性注入）導入済み: UseCaseはコンストラクタでInfraのインスタンスを受け取る設計
+- ✅ オニオンアーキテクチャに基づく層分離完了
+
+## 今後の拡張方針
+
+1. **インターフェース定義**: Infra層のインターフェースを定義し、テスタビリティ向上
+2. **Domain層追加**: 必要に応じてドメインオブジェクトを導入（現状は永続化不要のため省略）
+3. **Repository層**: データ永続化が必要になった場合、Repository層を追加

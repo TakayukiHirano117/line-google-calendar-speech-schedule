@@ -72,20 +72,70 @@ LINEに音声メッセージを送るだけで、Googleカレンダーに予定�
 
 ## アーキテクチャ
 
-擬似オニオンアーキテクチャで、クラスではなく関数ベースで実装してます。
+オニオンアーキテクチャを採用し、クラスベースで実装しています。
 
 ### 層構成
 
 ```
-Handler層 → UseCase層 → Infra層
-              ↓
-         Config/Constants
+┌─────────────────────────────────────────┐
+│              Handler層                   │
+│   リクエスト受付・レスポンス返却          │
+└─────────────────┬───────────────────────┘
+                  │ 依存
+                  ▼
+┌─────────────────────────────────────────┐
+│              UseCase層                   │
+│   ビジネスロジック・ユースケース定義      │
+└─────────────────┬───────────────────────┘
+                  │ 依存
+                  ▼
+┌─────────────────────────────────────────┐
+│              Infra層                     │
+│   外部API連携・技術的責務                │
+└─────────────────────────────────────────┘
+
+        ↓ 全層から参照可能 ↓
+┌─────────────────────────────────────────┐
+│        Config / Constants               │
+│   設定値・メッセージ定数                 │
+└─────────────────────────────────────────┘
 ```
 
-- **Handler層**: LINEからのイベントを受け取って振り分け
-- **UseCase層**: ビジネスロジック
+- **Handler層**: LINEからのイベントを受け取り、UseCaseを呼び出す
+- **UseCase層**: ビジネスロジック（1ユースケース = 1クラス）
 - **Infra層**: 外部API（LINE, Google Calendar, Speech-to-Text, Gemini）との通信
 - **Config/Constants**: 設定値とメッセージ定数
+
+### 依存性注入（DI）
+
+UseCaseはコンストラクタでInfraのインスタンスを受け取る設計。
+
+```typescript
+// 例: CreateEventFromVoiceUseCase
+export class CreateEventFromVoiceUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText,
+    private readonly geminiEventExtractor: GeminiEventExtractor,
+    private readonly userCalendar: UserCalendar
+  ) { }
+
+  public execute(replyToken: string, messageId: string, userId: string): void {
+    // 1. LINE APIから音声を取得
+    const audioBlob = this.lineMessaging.fetchAudioContent(messageId);
+    
+    // 2. Speech-to-Textで音声をテキストに変換
+    const transcribedText = this.speechToText.convertSpeechToText(audioBlob);
+    
+    // 3. Gemini APIでイベント情報を抽出
+    const calendarEventData = this.geminiEventExtractor.extractCalendarEventFromText(transcribedText);
+    
+    // 4. ユーザーのGoogleカレンダーにイベントを作成
+    const result = this.userCalendar.createEvent(calendarEventData);
+    // ...
+  }
+}
+```
 
 ### ディレクトリ構造
 
@@ -96,21 +146,20 @@ src/
 ├── handler/
 │   ├── lineWebhookHandler.ts   # LINEイベント処理（Strategyパターン）
 │   └── oauthCallbackHandler.ts # OAuth2コールバック
-├── usecase/
+├── usecase/                # ユースケース（クラス）
 │   ├── CreateEventFromVoiceUseCase.ts  # 音声→イベント作成
 │   ├── ShowTodayScheduleUseCase.ts     # 今日の予定
 │   ├── ShowWeekScheduleUseCase.ts      # 週間予定
-│   ├── ShowHelpUseCase.ts              # ヘルプ表示
 │   └── ...
-├── infra/
+├── infra/                  # 外部API通信（クラス）
 │   ├── google/
-│   │   ├── OAuth2Manager.ts        # OAuth2認証管理
-│   │   ├── userCalendarApi.ts      # カレンダーAPI
-│   │   ├── speechToTextApi.ts      # 音声認識API
-│   │   └── geminiApi.ts            # Gemini API
+│   │   ├── OAuth2Manager.ts            # OAuth2認証管理
+│   │   ├── UserCalendar.ts             # カレンダーAPI
+│   │   ├── SpeechToText.ts             # 音声認識API
+│   │   └── GeminiEventExtractor.ts     # Gemini API
 │   └── line/
-│       ├── lineMessagingApi.ts     # LINE API
-│       └── flexMessageFactory.ts   # Flexメッセージ生成
+│       ├── LineMessaging.ts            # LINE API
+│       └── FlexMessageFactory.ts       # Flexメッセージ生成
 ├── config/
 │   └── index.ts            # 設定定数
 ├── constants/
@@ -128,11 +177,11 @@ doPost（Webhook受信）
     ↓
 lineWebhookHandler（イベント振り分け）
     ↓
-CreateEventFromVoiceUseCase
-    ├─ LINE API: 音声ファイル取得
-    ├─ Speech-to-Text: 音声→テキスト変換
-    ├─ Gemini: テキスト→イベント情報抽出
-    └─ Calendar API: 予定登録
+CreateEventFromVoiceUseCase（インスタンス化 & 実行）
+    ├─ LineMessaging: 音声ファイル取得
+    ├─ SpeechToText: 音声→テキスト変換
+    ├─ GeminiEventExtractor: テキスト→イベント情報抽出
+    └─ UserCalendar: 予定登録
     ↓
 LINEに結果を返信
 ```
@@ -160,20 +209,66 @@ npm run deploy  # build + push
 
 ### 新機能の追加方法
 
-1. `src/usecase/` に新しいUseCaseを作成
-2. 必要に応じて `src/infra/` にAPI連携を追加
-3. `src/handler/lineWebhookHandler.ts` に条件分岐を追加してUseCaseを呼び出し
+#### 1. Infra層にクラスを追加（必要な場合）
 
 ```typescript
-// lineWebhookHandler.ts の例
-export const processLineEvent = (lineEvent) => {
-  if (isAudioMessage(lineEvent)) {
-    createEventFromVoice(replyToken, lineEvent.message.id);
-  } else if (isTextMessage(lineEvent)) {
-    processTextMessage(replyToken, lineEvent.message.text);
-  } else {
-    InvalidRequestUsecase(replyToken);
+// src/infra/google/NewGoogleApi.ts
+export class NewGoogleApi {
+  constructor(private readonly apiKey: string) {}
+
+  public fetchData(): Data | null {
+    try {
+      const response = UrlFetchApp.fetch(url, options);
+      return this.parseResponse(response);
+    } catch (error) {
+      CustomLogger.logError('データ取得', error);
+      return null;
+    }
   }
+}
+```
+
+#### 2. UseCase層にクラスを追加
+
+```typescript
+// src/usecase/NewFeatureUseCase.ts
+export class NewFeatureUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly newGoogleApi: NewGoogleApi
+  ) { }
+
+  public execute(replyToken: string): void {
+    // 1. データ取得
+    const data = this.newGoogleApi.fetchData();
+    
+    if (!data) {
+      this.lineMessaging.sendTextReply(replyToken, MESSAGE.ERROR);
+      return;
+    }
+    
+    // 2. 処理 & 返信
+    this.lineMessaging.sendTextReply(replyToken, MESSAGE.SUCCESS);
+  }
+}
+```
+
+#### 3. Handlerに条件分岐を追加
+
+```typescript
+// src/handler/lineWebhookHandler.ts
+export const processLineEvent = (lineEvent: any): void => {
+  const replyToken = lineEvent.replyToken;
+  
+  if (isNewFeatureRequest(lineEvent)) {
+    // UseCaseをインスタンス化して実行
+    const useCase = new NewFeatureUseCase(
+      new LineMessaging(channelAccessToken),
+      new NewGoogleApi(apiKey)
+    );
+    useCase.execute(replyToken);
+  }
+  // ...
 };
 ```
 

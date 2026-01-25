@@ -24,14 +24,44 @@ LINEに音声メッセージを送るだけでGoogleカレンダーに予定を�
 - **AI解析**: Gemini 2.5 Flash Lite
 - **認証**: OAuth2 for Apps Script ライブラリ
 
+## アーキテクチャ
+
+オニオンアーキテクチャを採用し、クラスベースで実装。
+
+### 層構成
+```
+Handler層 → UseCase層 → Infra層
+   ↓         ↓        ↓
+   └─────────┴────────┴─→ Config / Constants
+```
+
+- **Handler層**: リクエスト受付・レスポンス返却、UseCaseを呼び出す
+- **UseCase層**: ビジネスロジック（1ユースケース = 1クラス）
+- **Infra層**: 外部API連携（クラスベース）
+- **Config/Constants**: 設定値・メッセージ定数
+
+### 依存性注入（DI）
+UseCaseはコンストラクタでInfraのインスタンスを受け取る。
+
+```typescript
+export class CreateEventFromVoiceUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText,
+    private readonly geminiEventExtractor: GeminiEventExtractor,
+    private readonly userCalendar: UserCalendar
+  ) { }
+}
+```
+
 ## ディレクトリ構造
 ```
 src/
 ├── main.ts                 # GASエントリーポイント（global関数定義）
 ├── index.ts                # doPost, doGet, authCallback
 ├── handler/                # リクエスト受付・レスポンス返却
-├── usecase/                # ビジネスロジック
-├── infra/                  # 外部API連携
+├── usecase/                # ビジネスロジック（クラス）
+├── infra/                  # 外部API連携（クラス）
 │   ├── google/             # Google系API（Calendar, Speech-to-Text, Gemini, OAuth2）
 │   └── line/               # LINE Messaging API
 ├── config/                 # 設定定数

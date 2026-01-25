@@ -3,3 +3,210 @@ alwaysApply: true
 ---
 
 # 実装ルール
+
+## 基本方針
+
+### クラスベース実装
+- すべてのロジックはクラスで実装する
+- 関数型ではなくオブジェクト指向で記述
+
+### 依存性注入（DI）
+- コンストラクタで依存関係を注入
+- クラス内部で `new` を使わず、外部からインスタンスを受け取る
+- テスタビリティを重視
+
+```typescript
+// ✅ Good: DIを使用
+export class CreateEventFromVoiceUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText
+  ) { }
+}
+
+// ❌ Bad: クラス内部でnewを使用
+export class CreateEventFromVoiceUseCase {
+  public execute() {
+    const lineMessaging = new LineMessaging(); // NG
+  }
+}
+```
+
+## 層ごとの実装ルール
+
+### Handler層
+- リクエストの受け取りとレスポンスの返却のみ
+- UseCaseのインスタンス化と呼び出し
+- ビジネスロジックは書かない
+
+```typescript
+// 例: lineWebhookHandler.ts
+export const processLineEvent = (lineEvent: any): void => {
+  const replyToken = lineEvent.replyToken;
+  
+  if (isAudioMessage(lineEvent)) {
+    // UseCaseをインスタンス化して実行
+    const useCase = new CreateEventFromVoiceUseCase(
+      new LineMessaging(channelAccessToken),
+      new SpeechToText(gcpProjectId, privateKey, clientEmail),
+      // ...
+    );
+    useCase.execute(replyToken, lineEvent.message.id, lineEvent.source.userId);
+  }
+};
+```
+
+### UseCase層
+- ビジネスロジックを記述
+- 1ユースケース = 1クラス
+- `execute()` メソッドでユースケースを実行
+- Infraのメソッドを呼び出して外部APIと連携
+
+```typescript
+export class ShowTodayScheduleUseCase {
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly userCalendar: UserCalendar,
+    private readonly flexMessageFactory: FlexMessageFactory
+  ) { }
+
+  public execute(replyToken: string): void {
+    // 1. カレンダーから今日の予定を取得
+    const events = this.userCalendar.getTodayEvents();
+    
+    // 2. Flexメッセージを生成
+    const flexMessage = this.flexMessageFactory.buildScheduleMessage(events);
+    
+    // 3. LINEに返信
+    this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+  }
+}
+```
+
+### Infra層
+- 外部APIとの通信のみ
+- 他の層を呼び出さない
+- エラーハンドリングを適切に行う
+
+```typescript
+export class LineMessaging {
+  constructor(private readonly channelAccessToken: string) {}
+
+  public fetchAudioContent(messageId: string): GoogleAppsScript.Base.Blob | null {
+    try {
+      const response = UrlFetchApp.fetch(contentUrl, requestOptions);
+      return response.getBlob();
+    } catch (error) {
+      CustomLogger.logError('LINE音声コンテンツ取得', error);
+      return null;
+    }
+  }
+}
+```
+
+## アクセス修飾子
+
+- **public**: 外部から呼び出されるメソッド（`execute()` など）
+- **private**: クラス内部でのみ使用するメソッド
+- **readonly**: コンストラクタで注入された依存関係
+
+```typescript
+export class ExampleUseCase {
+  public constructor(
+    private readonly dependency: Dependency // readonly推奨
+  ) { }
+
+  public execute(): void { // 外部から呼ばれる
+    this.processInternal();
+  }
+
+  private processInternal(): void { // 内部処理
+    // ...
+  }
+}
+```
+
+## エラーハンドリング
+
+### Infra層
+- try-catchでエラーをキャッチ
+- エラー時は `null` または `false` を返す
+- `CustomLogger.logError()` でエラーログを記録
+
+```typescript
+public fetchData(): Data | null {
+  try {
+    const response = UrlFetchApp.fetch(url, options);
+    return this.parseResponse(response);
+  } catch (error) {
+    CustomLogger.logError('データ取得', error);
+    return null;
+  }
+}
+```
+
+### UseCase層
+- Infraから返された `null` や `false` をチェック
+- エラー時はユーザーにわかりやすいメッセージを返す
+
+```typescript
+public execute(replyToken: string): void {
+  const data = this.infra.fetchData();
+  
+  if (!data) {
+    this.lineMessaging.sendTextReply(replyToken, MESSAGE.DATA_FETCH_FAILED);
+    return;
+  }
+  
+  // 正常処理
+}
+```
+
+## 型定義
+
+- 型は明示的に記述
+- `any` は極力使わない（外部ライブラリの型定義がない場合のみ許容）
+- 戻り値の型を明示
+
+```typescript
+// ✅ Good
+public fetchData(): Data | null {
+  // ...
+}
+
+// ❌ Bad
+public fetchData() { // 戻り値の型がない
+  // ...
+}
+```
+
+## コメント
+
+- クラスとpublicメソッドにはJSDocコメントを記述
+- privateメソッドは必要に応じてコメント
+- わかりにくいロジックには適宜コメントを追加
+
+```typescript
+/**
+ * 音声メッセージからカレンダーイベントを作成するUseCase
+ */
+export class CreateEventFromVoiceUseCase {
+  /**
+   * @param lineMessaging LINE Messaging
+   * @param speechToText Speech-to-Text
+   */
+  public constructor(
+    private readonly lineMessaging: LineMessaging,
+    private readonly speechToText: SpeechToText
+  ) { }
+
+  /**
+   * 音声メッセージからカレンダーイベントを作成
+   * @param replyToken LINEリプライトークン
+   * @param messageId LINEメッセージID
+   */
+  public execute(replyToken: string, messageId: string): void {
+    // ...
+  }
+}
+```
