@@ -20,7 +20,7 @@ export const createUserCalendarEvent = (
     getOAuth2ClientId(),
     getOAuth2ClientSecret()
   );
-  
+
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     Logger.logError('カレンダーイベント作成', 'アクセストークンがありません');
@@ -91,7 +91,7 @@ export const getUserTodayEvents = (userId: string): CalendarEvent[] => {
     getOAuth2ClientId(),
     getOAuth2ClientSecret()
   );
-  
+
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     Logger.logError('今日の予定取得', 'アクセストークンがありません');
@@ -116,7 +116,7 @@ export const getUserWeekEvents = (userId: string): EventsByDate => {
     getOAuth2ClientId(),
     getOAuth2ClientSecret()
   );
-  
+
   const accessToken = oauth2Service.getAccessToken();
   if (!accessToken) {
     Logger.logError('週間予定取得', 'アクセストークンがありません');
@@ -205,23 +205,21 @@ const fetchUserEvents = (
  * @returns カレンダーイベントURL
  */
 export const buildUserCalendarEventUrl = (eventId: string): string => {
-  // primary カレンダーの場合、ユーザーのメールアドレスがカレンダーIDになる
-  // しかしOAuth2ではメールアドレスを取得していないため、
-  // イベントIDのみでURLを構築する（Googleカレンダーが自動的に解決）
-  const cleanEventId = eventId.replace('@google.com', '');
-  // シンプルなイベントリンク形式を使用
-  return `https://www.google.com/calendar/event?eid=${encodeEventId(cleanEventId)}`;
-};
+  // イベントIDから不要な部分を除去
+  // Google Calendar APIが返すIDの形式: "eventId_ランダム文字列" または "eventId"
+  const cleanEventId = eventId.split('_')[0];
 
-/**
- * イベントIDをURL用にエンコード
- * @param eventId イベントID
- * @returns エンコード済みイベントID
- */
-const encodeEventId = (eventId: string): string => {
-  // カレンダーIDがない場合は、イベントIDのみでBase64エンコード
-  // Googleカレンダーはこの形式でもイベントを解決できる
-  return Utilities.base64Encode(eventId).replace(/=+$/, '');
+  // eidパラメータを生成
+  // eidの形式: Base64Encode("cleanEventId primary@group.calendar.google.com")
+  // primaryカレンダーの場合は "primary" でもOK
+  const eidString = `${cleanEventId} primary`;
+  const eid = Utilities.base64Encode(eidString)
+    .replace(/\+/g, '-')   // URL safe: + -> -
+    .replace(/\//g, '_')   // URL safe: / -> _
+    .replace(/=+$/, '');   // paddingを除去
+
+  // 閲覧用のイベントURL（編集ではなく閲覧）
+  return `https://www.google.com/calendar/event?eid=${eid}`;
 };
 
 /**
