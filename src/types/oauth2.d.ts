@@ -151,6 +151,7 @@ interface CalendarEvent {
   startTime: Date;
   endTime: Date;
   isAllDay: boolean;
+  description?: string;
 }
 
 /**
@@ -169,6 +170,25 @@ interface EventsByDate {
 interface CreateEventResult {
   success: boolean;
   eventId?: string;
+  error?: string;
+  requiresReauth?: boolean;
+}
+
+/**
+ * カレンダーイベント更新結果
+ */
+interface UpdateEventResult {
+  success: boolean;
+  eventId?: string;
+  error?: string;
+  requiresReauth?: boolean;
+}
+
+/**
+ * カレンダーイベント削除結果
+ */
+interface DeleteEventResult {
+  success: boolean;
   error?: string;
   requiresReauth?: boolean;
 }

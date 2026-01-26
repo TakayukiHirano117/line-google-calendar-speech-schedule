@@ -9,6 +9,10 @@ export const MESSAGE = {
   CALENDAR_CREATION_FAILED: 'カレンダーへの追加に失敗しました',
   EVENT_EXTRACTION_FAILED: (transcribedText) =>
     `「${transcribedText}」\n\nイベント情報を抽出できませんでした。日付、時刻、内容を含めて話してください。`,
+  EVENT_NOT_FOUND: 'イベントが見つかりませんでした。',
+  EVENT_DELETE_FAILED: 'イベントの削除に失敗しました。もう一度お試しください。',
+  EVENT_UPDATE_FAILED: 'イベントの更新に失敗しました。もう一度お試しください。',
+  EDIT_MODE_TIMEOUT: '編集モードがタイムアウトしました。もう一度編集してください。',
   NO_EVENTS_TODAY: '今日の予定はありません',
   NO_EVENTS_WEEK: '今週の予定はありません',
   HELP: {

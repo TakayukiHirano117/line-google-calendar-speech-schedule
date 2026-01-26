@@ -635,6 +635,12 @@ export class FlexMessageFactory {
       paddingAll: 'sm',
       backgroundColor: '#F8F8F8',
       cornerRadius: 'md',
+      action: {
+        type: 'postback',
+        label: 'イベント詳細',
+        data: `action=show_detail&eventId=${event.id}`,
+        displayText: `${event.title}の詳細を表示`,
+      },
     };
   }
 
@@ -760,5 +766,417 @@ export class FlexMessageFactory {
    */
   private buildWeekCalendarUrl(): string {
     return 'https://calendar.google.com/calendar/r/week';
+  }
+
+  /**
+   * イベント詳細のFlexメッセージを構築
+   * @param event イベント
+   * @returns Flexメッセージ
+   */
+  public buildEventDetailMessage(event: CalendarEvent): object {
+    const startDate = event.startTime;
+    const endDate = event.endTime;
+    const dateText = this.formatDateForFlex(startDate);
+    const timeText = event.isAllDay
+      ? '終日'
+      : `${this.formatTimeForFlex(startDate)} 〜 ${this.formatTimeForFlex(endDate)}`;
+
+    const bodyContents: any[] = [
+      {
+        type: 'text',
+        text: event.title,
+        size: 'lg',
+        weight: 'bold',
+        color: CONFIG.COLORS.TEXT_PRIMARY,
+        wrap: true,
+      },
+      {
+        type: 'separator',
+        margin: 'lg',
+      },
+      {
+        type: 'box',
+        layout: 'horizontal',
+        contents: [
+          {
+            type: 'text',
+            text: '📅',
+            size: 'sm',
+            flex: 0,
+          },
+          {
+            type: 'text',
+            text: dateText,
+            size: 'sm',
+            color: CONFIG.COLORS.TEXT_SECONDARY,
+            margin: 'sm',
+            flex: 1,
+          },
+        ],
+        margin: 'lg',
+      },
+      {
+        type: 'box',
+        layout: 'horizontal',
+        contents: [
+          {
+            type: 'text',
+            text: '🕒',
+            size: 'sm',
+            flex: 0,
+          },
+          {
+            type: 'text',
+            text: timeText,
+            size: 'sm',
+            color: CONFIG.COLORS.TEXT_SECONDARY,
+            margin: 'sm',
+            flex: 1,
+          },
+        ],
+        margin: 'sm',
+      },
+    ];
+
+    // 説明がある場合は追加
+    if (event.description) {
+      bodyContents.push(
+        {
+          type: 'separator',
+          margin: 'lg',
+        },
+        {
+          type: 'text',
+          text: '📝 説明',
+          size: 'sm',
+          weight: 'bold',
+          color: CONFIG.COLORS.TEXT_PRIMARY,
+          margin: 'lg',
+        },
+        {
+          type: 'text',
+          text: event.description,
+          size: 'sm',
+          color: CONFIG.COLORS.TEXT_SECONDARY,
+          wrap: true,
+          margin: 'sm',
+        }
+      );
+    }
+
+    return {
+      altText: `📅 ${event.title}の詳細`,
+      contents: {
+        type: 'bubble',
+        size: 'kilo',
+        header: {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '📅',
+              size: 'lg',
+              flex: 0,
+            },
+            {
+              type: 'text',
+              text: 'イベント詳細',
+              size: 'md',
+              weight: 'bold',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+              margin: 'sm',
+              flex: 1,
+            },
+          ],
+          backgroundColor: '#F0F8FF',
+          paddingAll: 'lg',
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: bodyContents,
+          paddingAll: 'lg',
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'button',
+              action: {
+                type: 'postback',
+                label: '✏️ 編集',
+                data: `action=start_edit&eventId=${event.id}`,
+                displayText: 'この予定を編集',
+              },
+              style: 'primary',
+              color: CONFIG.COLORS.PRIMARY,
+            },
+            {
+              type: 'button',
+              action: {
+                type: 'postback',
+                label: '🗑️ 削除',
+                data: `action=delete&eventId=${event.id}`,
+                displayText: 'この予定を削除',
+              },
+              style: 'secondary',
+              margin: 'sm',
+            },
+          ],
+          paddingAll: 'lg',
+        },
+      },
+    };
+  }
+
+  /**
+   * 編集モード開始メッセージを構築
+   * @param event イベント
+   * @returns Flexメッセージ
+   */
+  public buildEditWaitingMessage(event: CalendarEvent): object {
+    return {
+      altText: `${event.title}を編集します`,
+      contents: {
+        type: 'bubble',
+        size: 'kilo',
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'text',
+              text: '✏️',
+              size: '3xl',
+              align: 'center',
+            },
+            {
+              type: 'text',
+              text: '編集モード',
+              size: 'lg',
+              weight: 'bold',
+              align: 'center',
+              margin: 'lg',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+            },
+            {
+              type: 'text',
+              text: `「${event.title}」を編集します`,
+              size: 'md',
+              align: 'center',
+              color: CONFIG.COLORS.TEXT_SECONDARY,
+              wrap: true,
+              margin: 'md',
+            },
+            {
+              type: 'separator',
+              margin: 'xl',
+            },
+            {
+              type: 'text',
+              text: '🎤 音声で新しい内容を送信してください',
+              size: 'sm',
+              align: 'center',
+              margin: 'xl',
+              color: CONFIG.COLORS.PRIMARY,
+              weight: 'bold',
+            },
+            {
+              type: 'text',
+              text: '例：「明日の15時から打ち合わせ」',
+              size: 'xs',
+              align: 'center',
+              margin: 'sm',
+              color: CONFIG.COLORS.TEXT_SECONDARY,
+            },
+          ],
+          paddingAll: 'xl',
+        },
+      },
+    };
+  }
+
+  /**
+   * イベント削除完了メッセージを構築
+   * @param eventTitle イベントタイトル
+   * @returns Flexメッセージ
+   */
+  public buildEventDeletedMessage(eventTitle: string): object {
+    return {
+      altText: `✅ ${eventTitle}を削除しました`,
+      contents: {
+        type: 'bubble',
+        size: 'kilo',
+        header: {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '✅',
+              size: 'lg',
+              flex: 0,
+            },
+            {
+              type: 'text',
+              text: '削除しました',
+              size: 'md',
+              weight: 'bold',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+              margin: 'sm',
+              flex: 1,
+            },
+          ],
+          backgroundColor: '#FFE6E6',
+          paddingAll: 'lg',
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'text',
+              text: eventTitle,
+              size: 'lg',
+              weight: 'bold',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+              wrap: true,
+            },
+            {
+              type: 'text',
+              text: 'カレンダーから削除されました',
+              size: 'sm',
+              color: CONFIG.COLORS.TEXT_SECONDARY,
+              margin: 'md',
+            },
+          ],
+          paddingAll: 'lg',
+        },
+      },
+    };
+  }
+
+  /**
+   * イベント更新完了メッセージを構築
+   * @param eventData イベントデータ
+   * @param eventUrl イベントURL
+   * @returns Flexメッセージ
+   */
+  public buildEventUpdatedMessage(eventData: any, eventUrl: string): object {
+    const startDate = new Date(eventData.startTime);
+    const endDate = new Date(eventData.endTime);
+    const dateText = this.formatDateForFlex(startDate);
+    const timeText = `${this.formatTimeForFlex(startDate)} 〜 ${this.formatTimeForFlex(endDate)}`;
+
+    return {
+      altText: `✅ イベントを更新しました: ${eventData.title}`,
+      contents: {
+        type: 'bubble',
+        size: 'kilo',
+        header: {
+          type: 'box',
+          layout: 'horizontal',
+          contents: [
+            {
+              type: 'text',
+              text: '✅',
+              size: 'lg',
+              flex: 0,
+            },
+            {
+              type: 'text',
+              text: 'イベントを更新しました',
+              size: 'md',
+              weight: 'bold',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+              margin: 'sm',
+              flex: 1,
+            },
+          ],
+          backgroundColor: '#FFF8DC',
+          paddingAll: 'lg',
+        },
+        body: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'text',
+              text: eventData.title,
+              size: 'lg',
+              weight: 'bold',
+              color: CONFIG.COLORS.TEXT_PRIMARY,
+              wrap: true,
+            },
+            {
+              type: 'separator',
+              margin: 'lg',
+            },
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                {
+                  type: 'text',
+                  text: '📅',
+                  size: 'sm',
+                  flex: 0,
+                },
+                {
+                  type: 'text',
+                  text: dateText,
+                  size: 'sm',
+                  color: CONFIG.COLORS.TEXT_SECONDARY,
+                  margin: 'sm',
+                  flex: 1,
+                },
+              ],
+              margin: 'lg',
+            },
+            {
+              type: 'box',
+              layout: 'horizontal',
+              contents: [
+                {
+                  type: 'text',
+                  text: '🕒',
+                  size: 'sm',
+                  flex: 0,
+                },
+                {
+                  type: 'text',
+                  text: timeText,
+                  size: 'sm',
+                  color: CONFIG.COLORS.TEXT_SECONDARY,
+                  margin: 'sm',
+                  flex: 1,
+                },
+              ],
+              margin: 'sm',
+            },
+          ],
+          paddingAll: 'lg',
+        },
+        footer: {
+          type: 'box',
+          layout: 'vertical',
+          contents: [
+            {
+              type: 'button',
+              action: {
+                type: 'uri',
+                label: 'カレンダーで見る',
+                uri: eventUrl + (eventUrl.includes('?') ? '&' : '?') + 'openExternalBrowser=1',
+              },
+              style: 'primary',
+              color: CONFIG.COLORS.PRIMARY,
+            },
+          ],
+          paddingAll: 'lg',
+        },
+      },
+    };
   }
 }

@@ -47,7 +47,7 @@ function authCallback() {}
     OAUTH2: {
       AUTHORIZATION_BASE_URL: "https://accounts.google.com/o/oauth2/v2/auth",
       TOKEN_URL: "https://oauth2.googleapis.com/token",
-      SCOPE: "https://www.googleapis.com/auth/calendar",
+      SCOPE: "https://www.googleapis.com/auth/calendar.events",
       CALLBACK_FUNCTION: "authCallback"
     },
     CALENDAR_API: {
@@ -68,6 +68,10 @@ function authCallback() {}
     EVENT_EXTRACTION_FAILED: (transcribedText) => `\u300C${transcribedText}\u300D
 
 \u30A4\u30D9\u30F3\u30C8\u60C5\u5831\u3092\u62BD\u51FA\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002\u65E5\u4ED8\u3001\u6642\u523B\u3001\u5185\u5BB9\u3092\u542B\u3081\u3066\u8A71\u3057\u3066\u304F\u3060\u3055\u3044\u3002`,
+    EVENT_NOT_FOUND: "\u30A4\u30D9\u30F3\u30C8\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3067\u3057\u305F\u3002",
+    EVENT_DELETE_FAILED: "\u30A4\u30D9\u30F3\u30C8\u306E\u524A\u9664\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+    EVENT_UPDATE_FAILED: "\u30A4\u30D9\u30F3\u30C8\u306E\u66F4\u65B0\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u304A\u8A66\u3057\u304F\u3060\u3055\u3044\u3002",
+    EDIT_MODE_TIMEOUT: "\u7DE8\u96C6\u30E2\u30FC\u30C9\u304C\u30BF\u30A4\u30E0\u30A2\u30A6\u30C8\u3057\u307E\u3057\u305F\u3002\u3082\u3046\u4E00\u5EA6\u7DE8\u96C6\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
     NO_EVENTS_TODAY: "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093",
     NO_EVENTS_WEEK: "\u4ECA\u9031\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093",
     HELP: {
@@ -344,7 +348,7 @@ function authCallback() {}
     }
   };
 
-  // src/usecase/InvalidRequestUseCase.ts
+  // src/usecase/InvalidRequestUsecase.ts
   var InvalidRequestUseCase = class {
     /**
      * @param lineMessaging LINE Messaging
@@ -355,9 +359,11 @@ function authCallback() {}
     /**
      * 不正なリクエストに対するエラーメッセージを送信
      * @param replyToken LINEリプライトークン
+     * @param customMessage カスタムメッセージ（オプション）
      */
-    execute(replyToken) {
-      this.lineMessaging.sendTextReply(replyToken, MESSAGE.REQUEST_AUDIO);
+    execute(replyToken, customMessage) {
+      const message = customMessage || MESSAGE.REQUEST_AUDIO;
+      this.lineMessaging.sendTextReply(replyToken, message);
     }
   };
 
@@ -414,6 +420,179 @@ function authCallback() {}
         this.oauth2ClientSecret
       );
       return oauth2Manager.hasValidToken();
+    }
+  };
+
+  // src/usecase/ShowEventDetailUseCase.ts
+  var ShowEventDetailUseCase = class {
+    /**
+     * @param userCalendar ユーザーカレンダー
+     * @param lineMessaging LINE Messaging
+     * @param flexMessageFactory Flexメッセージファクトリー
+     */
+    constructor(userCalendar, lineMessaging, flexMessageFactory) {
+      this.userCalendar = userCalendar;
+      this.lineMessaging = lineMessaging;
+      this.flexMessageFactory = flexMessageFactory;
+    }
+    /**
+     * イベント詳細を表示
+     * @param replyToken LINEリプライトークン
+     * @param eventId イベントID
+     */
+    execute(replyToken, eventId) {
+      const event = this.userCalendar.getEventById(eventId);
+      if (!event) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_NOT_FOUND);
+        return;
+      }
+      const flexMessage = this.flexMessageFactory.buildEventDetailMessage(event);
+      this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+    }
+  };
+
+  // src/usecase/DeleteEventUseCase.ts
+  var DeleteEventUseCase = class {
+    /**
+     * @param userCalendar ユーザーカレンダー
+     * @param lineMessaging LINE Messaging
+     * @param flexMessageFactory Flexメッセージファクトリー
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     * @param userId LINEユーザーID
+     */
+    constructor(userCalendar, lineMessaging, flexMessageFactory, oauth2ClientId, oauth2ClientSecret, userId) {
+      this.userCalendar = userCalendar;
+      this.lineMessaging = lineMessaging;
+      this.flexMessageFactory = flexMessageFactory;
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
+      this.userId = userId;
+    }
+    /**
+     * イベントを削除
+     * @param replyToken LINEリプライトークン
+     * @param eventId イベントID
+     */
+    execute(replyToken, eventId) {
+      const event = this.userCalendar.getEventById(eventId);
+      if (!event) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_NOT_FOUND);
+        return;
+      }
+      const result = this.userCalendar.deleteEvent(eventId);
+      if (result.success) {
+        const flexMessage = this.flexMessageFactory.buildEventDeletedMessage(event.title);
+        this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+      } else if (result.requiresReauth) {
+        const oauth2Manager = new OAuth2Manager(
+          this.userId,
+          this.oauth2ClientId,
+          this.oauth2ClientSecret
+        );
+        const authUrl = oauth2Manager.getAuthorizationUrl();
+        const flexMessage = this.flexMessageFactory.buildReauthRequiredMessage(authUrl);
+        this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+      } else {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_DELETE_FAILED);
+      }
+    }
+  };
+
+  // src/usecase/StartEditEventUseCase.ts
+  var StartEditEventUseCase = class {
+    /**
+     * @param userCalendar ユーザーカレンダー
+     * @param lineMessaging LINE Messaging
+     * @param flexMessageFactory Flexメッセージファクトリー
+     */
+    constructor(userCalendar, lineMessaging, flexMessageFactory) {
+      this.userCalendar = userCalendar;
+      this.lineMessaging = lineMessaging;
+      this.flexMessageFactory = flexMessageFactory;
+    }
+    /**
+     * 編集モードを開始
+     * @param replyToken LINEリプライトークン
+     * @param eventId イベントID
+     * @param userId LINEユーザーID
+     */
+    execute(replyToken, eventId, userId) {
+      const event = this.userCalendar.getEventById(eventId);
+      if (!event) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_NOT_FOUND);
+        return;
+      }
+      const userProperties = PropertiesService.getUserProperties();
+      userProperties.setProperty(`edit_mode_${userId}`, JSON.stringify({
+        eventId: event.id,
+        timestamp: Date.now()
+      }));
+      const flexMessage = this.flexMessageFactory.buildEditWaitingMessage(event);
+      this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+    }
+  };
+
+  // src/usecase/UpdateEventFromVoiceUseCase.ts
+  var UpdateEventFromVoiceUseCase = class {
+    /**
+     * @param lineMessaging LINE Messaging
+     * @param speechToText Speech-to-Text
+     * @param geminiEventExtractor Gemini イベント抽出
+     * @param userCalendar ユーザーカレンダー
+     * @param flexMessageFactory Flexメッセージファクトリー
+     * @param oauth2ClientId OAuth2クライアントID
+     * @param oauth2ClientSecret OAuth2クライアントシークレット
+     */
+    constructor(lineMessaging, speechToText, geminiEventExtractor, userCalendar, flexMessageFactory, oauth2ClientId, oauth2ClientSecret) {
+      this.lineMessaging = lineMessaging;
+      this.speechToText = speechToText;
+      this.geminiEventExtractor = geminiEventExtractor;
+      this.userCalendar = userCalendar;
+      this.flexMessageFactory = flexMessageFactory;
+      this.oauth2ClientId = oauth2ClientId;
+      this.oauth2ClientSecret = oauth2ClientSecret;
+    }
+    /**
+     * 音声メッセージからイベントを更新
+     * @param replyToken LINEリプライトークン
+     * @param messageId LINEメッセージID
+     * @param userId LINEユーザーID
+     * @param eventId イベントID
+     */
+    execute(replyToken, messageId, userId, eventId) {
+      const audioBlob = this.lineMessaging.fetchAudioContent(messageId);
+      if (!audioBlob) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.AUDIO_FETCH_FAILED);
+        return;
+      }
+      const transcribedText = this.speechToText.convertSpeechToText(audioBlob);
+      if (!transcribedText) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.SPEECH_RECOGNITION_FAILED);
+        return;
+      }
+      const calendarEventData = this.geminiEventExtractor.extractCalendarEventFromText(transcribedText);
+      if (!calendarEventData) {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_EXTRACTION_FAILED(transcribedText));
+        return;
+      }
+      const result = this.userCalendar.updateEvent(eventId, calendarEventData);
+      if (result.success && result.eventId) {
+        const eventUrl = this.userCalendar.buildEventUrl(result.eventId);
+        const flexMessage = this.flexMessageFactory.buildEventUpdatedMessage(calendarEventData, eventUrl);
+        this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+      } else if (result.requiresReauth) {
+        const oauth2Manager = new OAuth2Manager(
+          userId,
+          this.oauth2ClientId,
+          this.oauth2ClientSecret
+        );
+        const authUrl = oauth2Manager.getAuthorizationUrl();
+        const flexMessage = this.flexMessageFactory.buildReauthRequiredMessage(authUrl);
+        this.lineMessaging.sendFlexReply(replyToken, flexMessage);
+      } else {
+        this.lineMessaging.sendTextReply(replyToken, MESSAGE.EVENT_UPDATE_FAILED);
+      }
     }
   };
 
@@ -1156,7 +1335,13 @@ function authCallback() {}
         ],
         paddingAll: "sm",
         backgroundColor: "#F8F8F8",
-        cornerRadius: "md"
+        cornerRadius: "md",
+        action: {
+          type: "postback",
+          label: "\u30A4\u30D9\u30F3\u30C8\u8A73\u7D30",
+          data: `action=show_detail&eventId=${event.id}`,
+          displayText: `${event.title}\u306E\u8A73\u7D30\u3092\u8868\u793A`
+        }
       };
     }
     /**
@@ -1267,6 +1452,407 @@ function authCallback() {}
      */
     buildWeekCalendarUrl() {
       return "https://calendar.google.com/calendar/r/week";
+    }
+    /**
+     * イベント詳細のFlexメッセージを構築
+     * @param event イベント
+     * @returns Flexメッセージ
+     */
+    buildEventDetailMessage(event) {
+      const startDate = event.startTime;
+      const endDate = event.endTime;
+      const dateText = this.formatDateForFlex(startDate);
+      const timeText = event.isAllDay ? "\u7D42\u65E5" : `${this.formatTimeForFlex(startDate)} \u301C ${this.formatTimeForFlex(endDate)}`;
+      const bodyContents = [
+        {
+          type: "text",
+          text: event.title,
+          size: "lg",
+          weight: "bold",
+          color: CONFIG.COLORS.TEXT_PRIMARY,
+          wrap: true
+        },
+        {
+          type: "separator",
+          margin: "lg"
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "text",
+              text: "\u{1F4C5}",
+              size: "sm",
+              flex: 0
+            },
+            {
+              type: "text",
+              text: dateText,
+              size: "sm",
+              color: CONFIG.COLORS.TEXT_SECONDARY,
+              margin: "sm",
+              flex: 1
+            }
+          ],
+          margin: "lg"
+        },
+        {
+          type: "box",
+          layout: "horizontal",
+          contents: [
+            {
+              type: "text",
+              text: "\u{1F552}",
+              size: "sm",
+              flex: 0
+            },
+            {
+              type: "text",
+              text: timeText,
+              size: "sm",
+              color: CONFIG.COLORS.TEXT_SECONDARY,
+              margin: "sm",
+              flex: 1
+            }
+          ],
+          margin: "sm"
+        }
+      ];
+      if (event.description) {
+        bodyContents.push(
+          {
+            type: "separator",
+            margin: "lg"
+          },
+          {
+            type: "text",
+            text: "\u{1F4DD} \u8AAC\u660E",
+            size: "sm",
+            weight: "bold",
+            color: CONFIG.COLORS.TEXT_PRIMARY,
+            margin: "lg"
+          },
+          {
+            type: "text",
+            text: event.description,
+            size: "sm",
+            color: CONFIG.COLORS.TEXT_SECONDARY,
+            wrap: true,
+            margin: "sm"
+          }
+        );
+      }
+      return {
+        altText: `\u{1F4C5} ${event.title}\u306E\u8A73\u7D30`,
+        contents: {
+          type: "bubble",
+          size: "kilo",
+          header: {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "text",
+                text: "\u{1F4C5}",
+                size: "lg",
+                flex: 0
+              },
+              {
+                type: "text",
+                text: "\u30A4\u30D9\u30F3\u30C8\u8A73\u7D30",
+                size: "md",
+                weight: "bold",
+                color: CONFIG.COLORS.TEXT_PRIMARY,
+                margin: "sm",
+                flex: 1
+              }
+            ],
+            backgroundColor: "#F0F8FF",
+            paddingAll: "lg"
+          },
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: bodyContents,
+            paddingAll: "lg"
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                action: {
+                  type: "postback",
+                  label: "\u270F\uFE0F \u7DE8\u96C6",
+                  data: `action=start_edit&eventId=${event.id}`,
+                  displayText: "\u3053\u306E\u4E88\u5B9A\u3092\u7DE8\u96C6"
+                },
+                style: "primary",
+                color: CONFIG.COLORS.PRIMARY
+              },
+              {
+                type: "button",
+                action: {
+                  type: "postback",
+                  label: "\u{1F5D1}\uFE0F \u524A\u9664",
+                  data: `action=delete&eventId=${event.id}`,
+                  displayText: "\u3053\u306E\u4E88\u5B9A\u3092\u524A\u9664"
+                },
+                style: "secondary",
+                margin: "sm"
+              }
+            ],
+            paddingAll: "lg"
+          }
+        }
+      };
+    }
+    /**
+     * 編集モード開始メッセージを構築
+     * @param event イベント
+     * @returns Flexメッセージ
+     */
+    buildEditWaitingMessage(event) {
+      return {
+        altText: `${event.title}\u3092\u7DE8\u96C6\u3057\u307E\u3059`,
+        contents: {
+          type: "bubble",
+          size: "kilo",
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: "\u270F\uFE0F",
+                size: "3xl",
+                align: "center"
+              },
+              {
+                type: "text",
+                text: "\u7DE8\u96C6\u30E2\u30FC\u30C9",
+                size: "lg",
+                weight: "bold",
+                align: "center",
+                margin: "lg",
+                color: CONFIG.COLORS.TEXT_PRIMARY
+              },
+              {
+                type: "text",
+                text: `\u300C${event.title}\u300D\u3092\u7DE8\u96C6\u3057\u307E\u3059`,
+                size: "md",
+                align: "center",
+                color: CONFIG.COLORS.TEXT_SECONDARY,
+                wrap: true,
+                margin: "md"
+              },
+              {
+                type: "separator",
+                margin: "xl"
+              },
+              {
+                type: "text",
+                text: "\u{1F3A4} \u97F3\u58F0\u3067\u65B0\u3057\u3044\u5185\u5BB9\u3092\u9001\u4FE1\u3057\u3066\u304F\u3060\u3055\u3044",
+                size: "sm",
+                align: "center",
+                margin: "xl",
+                color: CONFIG.COLORS.PRIMARY,
+                weight: "bold"
+              },
+              {
+                type: "text",
+                text: "\u4F8B\uFF1A\u300C\u660E\u65E5\u306E15\u6642\u304B\u3089\u6253\u3061\u5408\u308F\u305B\u300D",
+                size: "xs",
+                align: "center",
+                margin: "sm",
+                color: CONFIG.COLORS.TEXT_SECONDARY
+              }
+            ],
+            paddingAll: "xl"
+          }
+        }
+      };
+    }
+    /**
+     * イベント削除完了メッセージを構築
+     * @param eventTitle イベントタイトル
+     * @returns Flexメッセージ
+     */
+    buildEventDeletedMessage(eventTitle) {
+      return {
+        altText: `\u2705 ${eventTitle}\u3092\u524A\u9664\u3057\u307E\u3057\u305F`,
+        contents: {
+          type: "bubble",
+          size: "kilo",
+          header: {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "text",
+                text: "\u2705",
+                size: "lg",
+                flex: 0
+              },
+              {
+                type: "text",
+                text: "\u524A\u9664\u3057\u307E\u3057\u305F",
+                size: "md",
+                weight: "bold",
+                color: CONFIG.COLORS.TEXT_PRIMARY,
+                margin: "sm",
+                flex: 1
+              }
+            ],
+            backgroundColor: "#FFE6E6",
+            paddingAll: "lg"
+          },
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: eventTitle,
+                size: "lg",
+                weight: "bold",
+                color: CONFIG.COLORS.TEXT_PRIMARY,
+                wrap: true
+              },
+              {
+                type: "text",
+                text: "\u30AB\u30EC\u30F3\u30C0\u30FC\u304B\u3089\u524A\u9664\u3055\u308C\u307E\u3057\u305F",
+                size: "sm",
+                color: CONFIG.COLORS.TEXT_SECONDARY,
+                margin: "md"
+              }
+            ],
+            paddingAll: "lg"
+          }
+        }
+      };
+    }
+    /**
+     * イベント更新完了メッセージを構築
+     * @param eventData イベントデータ
+     * @param eventUrl イベントURL
+     * @returns Flexメッセージ
+     */
+    buildEventUpdatedMessage(eventData, eventUrl) {
+      const startDate = new Date(eventData.startTime);
+      const endDate = new Date(eventData.endTime);
+      const dateText = this.formatDateForFlex(startDate);
+      const timeText = `${this.formatTimeForFlex(startDate)} \u301C ${this.formatTimeForFlex(endDate)}`;
+      return {
+        altText: `\u2705 \u30A4\u30D9\u30F3\u30C8\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F: ${eventData.title}`,
+        contents: {
+          type: "bubble",
+          size: "kilo",
+          header: {
+            type: "box",
+            layout: "horizontal",
+            contents: [
+              {
+                type: "text",
+                text: "\u2705",
+                size: "lg",
+                flex: 0
+              },
+              {
+                type: "text",
+                text: "\u30A4\u30D9\u30F3\u30C8\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F",
+                size: "md",
+                weight: "bold",
+                color: CONFIG.COLORS.TEXT_PRIMARY,
+                margin: "sm",
+                flex: 1
+              }
+            ],
+            backgroundColor: "#FFF8DC",
+            paddingAll: "lg"
+          },
+          body: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "text",
+                text: eventData.title,
+                size: "lg",
+                weight: "bold",
+                color: CONFIG.COLORS.TEXT_PRIMARY,
+                wrap: true
+              },
+              {
+                type: "separator",
+                margin: "lg"
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "\u{1F4C5}",
+                    size: "sm",
+                    flex: 0
+                  },
+                  {
+                    type: "text",
+                    text: dateText,
+                    size: "sm",
+                    color: CONFIG.COLORS.TEXT_SECONDARY,
+                    margin: "sm",
+                    flex: 1
+                  }
+                ],
+                margin: "lg"
+              },
+              {
+                type: "box",
+                layout: "horizontal",
+                contents: [
+                  {
+                    type: "text",
+                    text: "\u{1F552}",
+                    size: "sm",
+                    flex: 0
+                  },
+                  {
+                    type: "text",
+                    text: timeText,
+                    size: "sm",
+                    color: CONFIG.COLORS.TEXT_SECONDARY,
+                    margin: "sm",
+                    flex: 1
+                  }
+                ],
+                margin: "sm"
+              }
+            ],
+            paddingAll: "lg"
+          },
+          footer: {
+            type: "box",
+            layout: "vertical",
+            contents: [
+              {
+                type: "button",
+                action: {
+                  type: "uri",
+                  label: "\u30AB\u30EC\u30F3\u30C0\u30FC\u3067\u898B\u308B",
+                  uri: eventUrl + (eventUrl.includes("?") ? "&" : "?") + "openExternalBrowser=1"
+                },
+                style: "primary",
+                color: CONFIG.COLORS.PRIMARY
+              }
+            ],
+            paddingAll: "lg"
+          }
+        }
+      };
     }
   };
 
@@ -1444,7 +2030,8 @@ function authCallback() {}
           title: item.summary || "(\u30BF\u30A4\u30C8\u30EB\u306A\u3057)",
           startTime: new Date(item.start.dateTime || item.start.date),
           endTime: new Date(item.end.dateTime || item.end.date),
-          isAllDay: !item.start.dateTime
+          isAllDay: !item.start.dateTime,
+          description: item.description || ""
         }));
       } catch (error) {
         CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u53D6\u5F97", error);
@@ -1458,6 +2045,147 @@ function authCallback() {}
      */
     formatDateKey(date) {
       return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+    }
+    /**
+     * 特定のイベント詳細を取得
+     * @param eventId イベントID
+     * @returns イベント詳細 または null
+     */
+    getEventById(eventId) {
+      const accessToken = this.oauth2Manager.getAccessToken();
+      if (!accessToken) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u8A73\u7D30\u53D6\u5F97", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+        return null;
+      }
+      const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+      const options = {
+        method: "get",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        muteHttpExceptions: true
+      };
+      try {
+        const response = UrlFetchApp.fetch(endpoint, options);
+        const responseCode = response.getResponseCode();
+        if (responseCode !== 200) {
+          CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u8A73\u7D30\u53D6\u5F97", response.getContentText());
+          return null;
+        }
+        const item = JSON.parse(response.getContentText());
+        return {
+          id: item.id,
+          title: item.summary || "(\u30BF\u30A4\u30C8\u30EB\u306A\u3057)",
+          startTime: new Date(item.start.dateTime || item.start.date),
+          endTime: new Date(item.end.dateTime || item.end.date),
+          isAllDay: !item.start.dateTime,
+          description: item.description || ""
+        };
+      } catch (error) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u8A73\u7D30\u53D6\u5F97", error);
+        return null;
+      }
+    }
+    /**
+     * イベントを更新
+     * @param eventId イベントID
+     * @param eventData 更新するイベントデータ
+     * @returns 更新結果
+     */
+    updateEvent(eventId, eventData) {
+      const accessToken = this.oauth2Manager.getAccessToken();
+      if (!accessToken) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u66F4\u65B0", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+        return { success: false, error: "NO_TOKEN", requiresReauth: true };
+      }
+      const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+      const calendarEvent = {
+        summary: eventData.title,
+        description: eventData.description || "",
+        start: {
+          dateTime: eventData.startTime,
+          timeZone: "Asia/Tokyo"
+        },
+        end: {
+          dateTime: eventData.endTime,
+          timeZone: "Asia/Tokyo"
+        }
+      };
+      const options = {
+        method: "put",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        payload: JSON.stringify(calendarEvent),
+        muteHttpExceptions: true
+      };
+      try {
+        const response = UrlFetchApp.fetch(endpoint, options);
+        const responseCode = response.getResponseCode();
+        switch (responseCode) {
+          case 200:
+            CustomLogger.logDebug("\u30A4\u30D9\u30F3\u30C8\u66F4\u65B0\u6210\u529F", eventId);
+            return { success: true, eventId };
+          case 401:
+            this.oauth2Manager.revokeToken();
+            return { success: false, error: "TOKEN_EXPIRED", requiresReauth: true };
+          case 403:
+            return { success: false, error: "ACCESS_DENIED", requiresReauth: true };
+          case 429:
+            return { success: false, error: "RATE_LIMITED", requiresReauth: false };
+          default:
+            CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u66F4\u65B0", response.getContentText());
+            return { success: false, error: "API_ERROR", requiresReauth: false };
+        }
+      } catch (error) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u66F4\u65B0", error);
+        return { success: false, error: String(error), requiresReauth: false };
+      }
+    }
+    /**
+     * イベントを削除
+     * @param eventId イベントID
+     * @returns 削除結果
+     */
+    deleteEvent(eventId) {
+      const accessToken = this.oauth2Manager.getAccessToken();
+      if (!accessToken) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u524A\u9664", "\u30A2\u30AF\u30BB\u30B9\u30C8\u30FC\u30AF\u30F3\u304C\u3042\u308A\u307E\u305B\u3093");
+        return { success: false, error: "NO_TOKEN", requiresReauth: true };
+      }
+      const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+      const options = {
+        method: "delete",
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        },
+        muteHttpExceptions: true
+      };
+      try {
+        const response = UrlFetchApp.fetch(endpoint, options);
+        const responseCode = response.getResponseCode();
+        switch (responseCode) {
+          case 204:
+            CustomLogger.logDebug("\u30A4\u30D9\u30F3\u30C8\u524A\u9664\u6210\u529F", eventId);
+            return { success: true };
+          case 401:
+            this.oauth2Manager.revokeToken();
+            return { success: false, error: "TOKEN_EXPIRED", requiresReauth: true };
+          case 403:
+            return { success: false, error: "ACCESS_DENIED", requiresReauth: true };
+          case 410:
+            CustomLogger.logDebug("\u30A4\u30D9\u30F3\u30C8\u306F\u65E2\u306B\u524A\u9664\u6E08\u307F", eventId);
+            return { success: true };
+          // 削除済みも成功扱い
+          default:
+            CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u524A\u9664", response.getContentText());
+            return { success: false, error: "API_ERROR", requiresReauth: false };
+        }
+      } catch (error) {
+        CustomLogger.logError("\u30A4\u30D9\u30F3\u30C8\u524A\u9664", error);
+        return { success: false, error: String(error), requiresReauth: false };
+      }
     }
   };
 
@@ -1801,8 +2529,12 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
      * @param showLogoutUseCase ログアウトUseCase
      * @param invalidRequestUseCase 不正リクエスト処理UseCase
      * @param sendAuthRequiredMessageUseCase 認証要求メッセージ送信UseCase
+     * @param showEventDetailUseCase イベント詳細表示UseCase
+     * @param deleteEventUseCase イベント削除UseCase
+     * @param startEditEventUseCase イベント編集開始UseCase
+     * @param updateEventFromVoiceUseCase 音声からイベント更新UseCase
      */
-    constructor(checkAuthenticationUseCase, createEventFromVoiceUseCase, showHelpUseCase, showWeekScheduleUseCase, showTodayScheduleUseCase, showLogoutUseCase, invalidRequestUseCase, sendAuthRequiredMessageUseCase) {
+    constructor(checkAuthenticationUseCase, createEventFromVoiceUseCase, showHelpUseCase, showWeekScheduleUseCase, showTodayScheduleUseCase, showLogoutUseCase, invalidRequestUseCase, sendAuthRequiredMessageUseCase, showEventDetailUseCase, deleteEventUseCase, startEditEventUseCase, updateEventFromVoiceUseCase) {
       this.checkAuthenticationUseCase = checkAuthenticationUseCase;
       this.createEventFromVoiceUseCase = createEventFromVoiceUseCase;
       this.showHelpUseCase = showHelpUseCase;
@@ -1811,6 +2543,10 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
       this.showLogoutUseCase = showLogoutUseCase;
       this.invalidRequestUseCase = invalidRequestUseCase;
       this.sendAuthRequiredMessageUseCase = sendAuthRequiredMessageUseCase;
+      this.showEventDetailUseCase = showEventDetailUseCase;
+      this.deleteEventUseCase = deleteEventUseCase;
+      this.startEditEventUseCase = startEditEventUseCase;
+      this.updateEventFromVoiceUseCase = updateEventFromVoiceUseCase;
     }
     /**
      * LINEイベントを処理（index.tsから呼び出されるstaticメソッド）
@@ -1872,6 +2608,33 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         lineMessaging,
         flexMessageFactory
       );
+      const showEventDetailUseCase = new ShowEventDetailUseCase(
+        userCalendar,
+        lineMessaging,
+        flexMessageFactory
+      );
+      const deleteEventUseCase = new DeleteEventUseCase(
+        userCalendar,
+        lineMessaging,
+        flexMessageFactory,
+        oauth2ClientId,
+        oauth2ClientSecret,
+        userId
+      );
+      const startEditEventUseCase = new StartEditEventUseCase(
+        userCalendar,
+        lineMessaging,
+        flexMessageFactory
+      );
+      const updateEventFromVoiceUseCase = new UpdateEventFromVoiceUseCase(
+        lineMessaging,
+        speechToText,
+        geminiEventExtractor,
+        userCalendar,
+        flexMessageFactory,
+        oauth2ClientId,
+        oauth2ClientSecret
+      );
       const handler = new _LineWebHookHandler(
         checkAuthenticationUseCase,
         createEventFromVoiceUseCase,
@@ -1880,7 +2643,11 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         showTodayScheduleUseCase,
         showLogoutUseCase,
         invalidRequestUseCase,
-        sendAuthRequiredMessageUseCase
+        sendAuthRequiredMessageUseCase,
+        showEventDetailUseCase,
+        deleteEventUseCase,
+        startEditEventUseCase,
+        updateEventFromVoiceUseCase
       );
       handler.handleEvent(lineEvent);
     }
@@ -1905,6 +2672,25 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         return;
       }
       if (this.isAudioMessage(lineEvent)) {
+        const userProperties = PropertiesService.getUserProperties();
+        const editModeData = userProperties.getProperty(`edit_mode_${userId}`);
+        if (editModeData) {
+          const editMode = JSON.parse(editModeData);
+          if (Date.now() - editMode.timestamp < 5 * 60 * 1e3) {
+            userProperties.deleteProperty(`edit_mode_${userId}`);
+            this.updateEventFromVoiceUseCase.execute(
+              replyToken,
+              lineEvent.message.id,
+              userId,
+              editMode.eventId
+            );
+            return;
+          } else {
+            userProperties.deleteProperty(`edit_mode_${userId}`);
+            this.invalidRequestUseCase.execute(replyToken, MESSAGE.EDIT_MODE_TIMEOUT);
+            return;
+          }
+        }
         this.createEventFromVoiceUseCase.execute(replyToken, lineEvent.message.id, userId);
       } else if (this.isTextMessage(lineEvent)) {
         this.processTextMessage(replyToken, lineEvent.message.text, userId);
@@ -1950,9 +2736,31 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
      * @param userId LINEユーザーID
      */
     processPostbackEvent(replyToken, postbackData, userId) {
-      const actionMatch = postbackData.match(/action=([^&]+)/);
-      const action = actionMatch ? actionMatch[1] : null;
+      const params = this.parseQueryString(postbackData);
+      const action = params["action"];
+      const eventId = params["eventId"];
       switch (action) {
+        case "show_detail":
+          if (eventId) {
+            this.showEventDetailUseCase.execute(replyToken, eventId);
+          } else {
+            this.invalidRequestUseCase.execute(replyToken);
+          }
+          break;
+        case "start_edit":
+          if (eventId) {
+            this.startEditEventUseCase.execute(replyToken, eventId, userId);
+          } else {
+            this.invalidRequestUseCase.execute(replyToken);
+          }
+          break;
+        case "delete":
+          if (eventId) {
+            this.deleteEventUseCase.execute(replyToken, eventId);
+          } else {
+            this.invalidRequestUseCase.execute(replyToken);
+          }
+          break;
         case "logout":
           this.showLogoutUseCase.execute(replyToken, userId);
           break;
@@ -1968,6 +2776,25 @@ JSON\u5F62\u5F0F\u306E\u307F\u3092\u8FD4\u3057\u3001\u4ED6\u306E\u8AAC\u660E\u30
         default:
           this.invalidRequestUseCase.execute(replyToken);
       }
+    }
+    /**
+     * クエリ文字列をパースしてオブジェクトに変換
+     * @param queryString クエリ文字列（例: "action=show_detail&eventId=abc123"）
+     * @returns パース結果のオブジェクト
+     */
+    parseQueryString(queryString) {
+      const params = {};
+      if (!queryString) {
+        return params;
+      }
+      const pairs = queryString.split("&");
+      for (const pair of pairs) {
+        const [key, value] = pair.split("=");
+        if (key) {
+          params[decodeURIComponent(key)] = value ? decodeURIComponent(value) : "";
+        }
+      }
+      return params;
     }
     /**
      * 音声メッセージかチェック
