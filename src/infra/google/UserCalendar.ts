@@ -16,7 +16,7 @@ export class UserCalendar {
   constructor(
     private readonly userId: string,
     private readonly oauth2Manager: OAuth2Manager
-  ) {}
+  ) { }
 
   /**
    * ユーザーのカレンダーにイベントを作成
@@ -220,6 +220,7 @@ export class UserCalendar {
         startTime: new Date(item.start.dateTime || item.start.date),
         endTime: new Date(item.end.dateTime || item.end.date),
         isAllDay: !item.start.dateTime,
+        description: item.description || '',
       }));
     } catch (error) {
       CustomLogger.logError('イベント取得', error);
@@ -234,5 +235,159 @@ export class UserCalendar {
    */
   private formatDateKey(date: Date): string {
     return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+  }
+
+  /**
+   * 特定のイベント詳細を取得
+   * @param eventId イベントID
+   * @returns イベント詳細 または null
+   */
+  public getEventById(eventId: string): CalendarEvent | null {
+    const accessToken = this.oauth2Manager.getAccessToken();
+    if (!accessToken) {
+      CustomLogger.logError('イベント詳細取得', 'アクセストークンがありません');
+      return null;
+    }
+
+    const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      method: 'get',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      muteHttpExceptions: true,
+    };
+
+    try {
+      const response = UrlFetchApp.fetch(endpoint, options);
+      const responseCode = response.getResponseCode();
+
+      if (responseCode !== 200) {
+        CustomLogger.logError('イベント詳細取得', response.getContentText());
+        return null;
+      }
+
+      const item = JSON.parse(response.getContentText());
+      return {
+        id: item.id,
+        title: item.summary || '(タイトルなし)',
+        startTime: new Date(item.start.dateTime || item.start.date),
+        endTime: new Date(item.end.dateTime || item.end.date),
+        isAllDay: !item.start.dateTime,
+        description: item.description || '',
+      };
+    } catch (error) {
+      CustomLogger.logError('イベント詳細取得', error);
+      return null;
+    }
+  }
+
+  /**
+   * イベントを更新
+   * @param eventId イベントID
+   * @param eventData 更新するイベントデータ
+   * @returns 更新結果
+   */
+  public updateEvent(eventId: string, eventData: CalendarEventData): UpdateEventResult {
+    const accessToken = this.oauth2Manager.getAccessToken();
+    if (!accessToken) {
+      CustomLogger.logError('イベント更新', 'アクセストークンがありません');
+      return { success: false, error: 'NO_TOKEN', requiresReauth: true };
+    }
+
+    const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+    const calendarEvent = {
+      summary: eventData.title,
+      description: eventData.description || '',
+      start: {
+        dateTime: eventData.startTime,
+        timeZone: 'Asia/Tokyo',
+      },
+      end: {
+        dateTime: eventData.endTime,
+        timeZone: 'Asia/Tokyo',
+      },
+    };
+
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      method: 'put',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      payload: JSON.stringify(calendarEvent),
+      muteHttpExceptions: true,
+    };
+
+    try {
+      const response = UrlFetchApp.fetch(endpoint, options);
+      const responseCode = response.getResponseCode();
+
+      switch (responseCode) {
+        case 200:
+          CustomLogger.logDebug('イベント更新成功', eventId);
+          return { success: true, eventId };
+        case 401:
+          this.oauth2Manager.revokeToken();
+          return { success: false, error: 'TOKEN_EXPIRED', requiresReauth: true };
+        case 403:
+          return { success: false, error: 'ACCESS_DENIED', requiresReauth: true };
+        case 429:
+          return { success: false, error: 'RATE_LIMITED', requiresReauth: false };
+        default:
+          CustomLogger.logError('イベント更新', response.getContentText());
+          return { success: false, error: 'API_ERROR', requiresReauth: false };
+      }
+    } catch (error) {
+      CustomLogger.logError('イベント更新', error);
+      return { success: false, error: String(error), requiresReauth: false };
+    }
+  }
+
+  /**
+   * イベントを削除
+   * @param eventId イベントID
+   * @returns 削除結果
+   */
+  public deleteEvent(eventId: string): DeleteEventResult {
+    const accessToken = this.oauth2Manager.getAccessToken();
+    if (!accessToken) {
+      CustomLogger.logError('イベント削除', 'アクセストークンがありません');
+      return { success: false, error: 'NO_TOKEN', requiresReauth: true };
+    }
+
+    const endpoint = `${CALENDAR_API_BASE}/calendars/primary/events/${eventId}`;
+    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+      method: 'delete',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      muteHttpExceptions: true,
+    };
+
+    try {
+      const response = UrlFetchApp.fetch(endpoint, options);
+      const responseCode = response.getResponseCode();
+
+      switch (responseCode) {
+        case 204: // 削除成功
+          CustomLogger.logDebug('イベント削除成功', eventId);
+          return { success: true };
+        case 401:
+          this.oauth2Manager.revokeToken();
+          return { success: false, error: 'TOKEN_EXPIRED', requiresReauth: true };
+        case 403:
+          return { success: false, error: 'ACCESS_DENIED', requiresReauth: true };
+        case 410: // すでに削除済み
+          CustomLogger.logDebug('イベントは既に削除済み', eventId);
+          return { success: true }; // 削除済みも成功扱い
+        default:
+          CustomLogger.logError('イベント削除', response.getContentText());
+          return { success: false, error: 'API_ERROR', requiresReauth: false };
+      }
+    } catch (error) {
+      CustomLogger.logError('イベント削除', error);
+      return { success: false, error: String(error), requiresReauth: false };
+    }
   }
 }

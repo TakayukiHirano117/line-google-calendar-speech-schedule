@@ -4,9 +4,13 @@ import { ShowHelpUseCase } from '../usecase/ShowHelpUseCase';
 import { ShowWeekScheduleUseCase } from '../usecase/ShowWeekScheduleUseCase';
 import { ShowTodayScheduleUseCase } from '../usecase/ShowTodayScheduleUseCase';
 import { ShowLogoutUseCase } from '../usecase/ShowLogoutUseCase';
-import { InvalidRequestUseCase } from '../usecase/InvalidRequestUseCase';
+import { InvalidRequestUseCase } from '../usecase/InvalidRequestUsecase';
 import { SendAuthRequiredMessageUseCase } from '../usecase/SendAuthRequiredMessageUseCase';
 import { CheckAuthenticationUseCase } from '../usecase/CheckAuthenticationUseCase';
+import { ShowEventDetailUseCase } from '../usecase/ShowEventDetailUseCase';
+import { DeleteEventUseCase } from '../usecase/DeleteEventUseCase';
+import { StartEditEventUseCase } from '../usecase/StartEditEventUseCase';
+import { UpdateEventFromVoiceUseCase } from '../usecase/UpdateEventFromVoiceUseCase';
 import {
   getOAuth2ClientId,
   getOAuth2ClientSecret,
@@ -22,6 +26,7 @@ import { UserCalendar } from '../infra/google/UserCalendar';
 import { GoogleServiceAccountAuth } from '../infra/google/GoogleServiceAccountAuth';
 import { SpeechToText } from '../infra/google/SpeechToText';
 import { GeminiEventExtractor } from '../infra/google/GeminiEventExtractor';
+import { MESSAGE } from '../constants/message';
 
 /**
  * LINEからのWebhookイベントを処理するHandler
@@ -36,6 +41,10 @@ export class LineWebHookHandler {
    * @param showLogoutUseCase ログアウトUseCase
    * @param invalidRequestUseCase 不正リクエスト処理UseCase
    * @param sendAuthRequiredMessageUseCase 認証要求メッセージ送信UseCase
+   * @param showEventDetailUseCase イベント詳細表示UseCase
+   * @param deleteEventUseCase イベント削除UseCase
+   * @param startEditEventUseCase イベント編集開始UseCase
+   * @param updateEventFromVoiceUseCase 音声からイベント更新UseCase
    */
   public constructor(
     private readonly checkAuthenticationUseCase: CheckAuthenticationUseCase,
@@ -45,7 +54,11 @@ export class LineWebHookHandler {
     private readonly showTodayScheduleUseCase: ShowTodayScheduleUseCase,
     private readonly showLogoutUseCase: ShowLogoutUseCase,
     private readonly invalidRequestUseCase: InvalidRequestUseCase,
-    private readonly sendAuthRequiredMessageUseCase: SendAuthRequiredMessageUseCase
+    private readonly sendAuthRequiredMessageUseCase: SendAuthRequiredMessageUseCase,
+    private readonly showEventDetailUseCase: ShowEventDetailUseCase,
+    private readonly deleteEventUseCase: DeleteEventUseCase,
+    private readonly startEditEventUseCase: StartEditEventUseCase,
+    private readonly updateEventFromVoiceUseCase: UpdateEventFromVoiceUseCase
   ) { }
 
   /**
@@ -118,6 +131,33 @@ export class LineWebHookHandler {
       lineMessaging,
       flexMessageFactory
     );
+    const showEventDetailUseCase = new ShowEventDetailUseCase(
+      userCalendar,
+      lineMessaging,
+      flexMessageFactory
+    );
+    const deleteEventUseCase = new DeleteEventUseCase(
+      userCalendar,
+      lineMessaging,
+      flexMessageFactory,
+      oauth2ClientId,
+      oauth2ClientSecret,
+      userId
+    );
+    const startEditEventUseCase = new StartEditEventUseCase(
+      userCalendar,
+      lineMessaging,
+      flexMessageFactory
+    );
+    const updateEventFromVoiceUseCase = new UpdateEventFromVoiceUseCase(
+      lineMessaging,
+      speechToText,
+      geminiEventExtractor,
+      userCalendar,
+      flexMessageFactory,
+      oauth2ClientId,
+      oauth2ClientSecret
+    );
 
     // 7. LineWebHookHandlerインスタンス作成
     const handler = new LineWebHookHandler(
@@ -128,7 +168,11 @@ export class LineWebHookHandler {
       showTodayScheduleUseCase,
       showLogoutUseCase,
       invalidRequestUseCase,
-      sendAuthRequiredMessageUseCase
+      sendAuthRequiredMessageUseCase,
+      showEventDetailUseCase,
+      deleteEventUseCase,
+      startEditEventUseCase,
+      updateEventFromVoiceUseCase
     );
 
     // 8. イベント処理実行
@@ -165,6 +209,36 @@ export class LineWebHookHandler {
 
     // 認証済みの場合は通常処理
     if (this.isAudioMessage(lineEvent)) {
+      // 編集モード中かチェック
+      const userProperties = PropertiesService.getUserProperties();
+      const editModeData = userProperties.getProperty(`edit_mode_${userId}`);
+
+      if (editModeData) {
+        // 編集モード中
+        const editMode = JSON.parse(editModeData);
+
+        // タイムアウトチェック（5分）
+        if (Date.now() - editMode.timestamp < 5 * 60 * 1000) {
+          // 編集モード状態をクリア
+          userProperties.deleteProperty(`edit_mode_${userId}`);
+
+          // イベント更新処理
+          this.updateEventFromVoiceUseCase.execute(
+            replyToken,
+            lineEvent.message.id,
+            userId,
+            editMode.eventId
+          );
+          return;
+        } else {
+          // タイムアウト
+          userProperties.deleteProperty(`edit_mode_${userId}`);
+          this.invalidRequestUseCase.execute(replyToken, MESSAGE.EDIT_MODE_TIMEOUT);
+          return;
+        }
+      }
+
+      // 通常の新規作成
       this.createEventFromVoiceUseCase.execute(replyToken, lineEvent.message.id, userId);
     } else if (this.isTextMessage(lineEvent)) {
       this.processTextMessage(replyToken, lineEvent.message.text, userId);
@@ -213,11 +287,33 @@ export class LineWebHookHandler {
    * @param userId LINEユーザーID
    */
   private processPostbackEvent(replyToken: string, postbackData: string, userId: string): void {
-    // Postbackデータをパース（例: "action=logout"）
-    const actionMatch = postbackData.match(/action=([^&]+)/);
-    const action = actionMatch ? actionMatch[1] : null;
+    // postbackDataをパース（例: "action=show_detail&eventId=abc123"）
+    const params = this.parseQueryString(postbackData);
+    const action = params['action'];
+    const eventId = params['eventId'];
 
     switch (action) {
+      case 'show_detail':
+        if (eventId) {
+          this.showEventDetailUseCase.execute(replyToken, eventId);
+        } else {
+          this.invalidRequestUseCase.execute(replyToken);
+        }
+        break;
+      case 'start_edit':
+        if (eventId) {
+          this.startEditEventUseCase.execute(replyToken, eventId, userId);
+        } else {
+          this.invalidRequestUseCase.execute(replyToken);
+        }
+        break;
+      case 'delete':
+        if (eventId) {
+          this.deleteEventUseCase.execute(replyToken, eventId);
+        } else {
+          this.invalidRequestUseCase.execute(replyToken);
+        }
+        break;
       case 'logout':
         this.showLogoutUseCase.execute(replyToken, userId);
         break;
@@ -233,6 +329,33 @@ export class LineWebHookHandler {
       default:
         this.invalidRequestUseCase.execute(replyToken);
     }
+  }
+
+  /**
+   * クエリ文字列をパースしてオブジェクトに変換
+   * @param queryString クエリ文字列（例: "action=show_detail&eventId=abc123"）
+   * @returns パース結果のオブジェクト
+   */
+  private parseQueryString(queryString: string): Record<string, string> {
+    const params: Record<string, string> = {};
+
+    if (!queryString) {
+      return params;
+    }
+
+    // "&" で分割
+    const pairs = queryString.split('&');
+
+    for (const pair of pairs) {
+      // "=" で分割
+      const [key, value] = pair.split('=');
+      if (key) {
+        // URLデコード
+        params[decodeURIComponent(key)] = value ? decodeURIComponent(value) : '';
+      }
+    }
+
+    return params;
   }
 
   /**
